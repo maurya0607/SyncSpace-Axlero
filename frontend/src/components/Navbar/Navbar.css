@@ -1,0 +1,22 @@
+.navbar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: #ffffff;
+  border-bottom: 1px solid #ddd;
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.room-info {
+  font-size: 16px;
+}
+
+.user-info {
+  font-weight: 600;
+}

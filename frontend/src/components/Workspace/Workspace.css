@@ -1,0 +1,59 @@
+.workspace {
+  flex: 1;
+  padding: 24px;
+}
+
+.workspace-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.workspace-header h1 {
+  margin: 0;
+  font-size: 24px;
+}
+
+.workspace-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.panel {
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.panel h2 {
+  margin: 0;
+  padding: 16px;
+  border-bottom: 1px solid #ddd;
+  font-size: 18px;
+}
+
+.whiteboard-area,
+.code-area {
+  min-height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.whiteboard-area {
+  background: #fafafa;
+}
+
+.code-area {
+  background: #1e1e1e;
+  color: #ffffff;
+}
+
+@media (max-width: 900px) {
+  .workspace-content {
+    grid-template-columns: 1fr;
+  }
+}
