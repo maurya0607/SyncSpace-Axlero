@@ -1,18 +1,132 @@
-* {
-  box-sizing: border-box;
-}
+/* =========================================================
+   APP ROOT
+   ========================================================= */
 
-body {
+#root {
+  width: 100%;
+  min-height: 100vh;
   margin: 0;
-  font-family: Arial, sans-serif;
+  padding: 0;
 }
 
 .app {
+  width: 100%;
   min-height: 100vh;
-  background: #f5f7fb;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
 
-.main-layout {
+
+/* =========================================================
+   NAVBAR AREA
+   ========================================================= */
+
+.app > nav,
+.app > header {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+
+/* =========================================================
+   MAIN APP BODY
+   ========================================================= */
+
+.app-body {
   display: flex;
-  min-height: calc(100vh - 64px);
+
+  width: 100%;
+  min-width: 0;
+
+  min-height: calc(100vh - 72px);
+
+  margin: 0;
+  padding: 0;
+
+  box-sizing: border-box;
+
+  align-items: stretch;
+}
+
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.app-body > aside {
+  flex: 0 0 260px;
+
+  width: 260px;
+  min-width: 260px;
+
+  margin: 0;
+  padding: 0;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   MAIN CONTENT
+   ========================================================= */
+
+.main-content {
+  flex: 1;
+
+  width: calc(100% - 260px);
+
+  min-width: 0;
+  min-height: calc(100vh - 72px);
+
+  margin: 0;
+  padding: 0;
+
+  box-sizing: border-box;
+
+  overflow-x: hidden;
+}
+
+
+/* =========================================================
+   WORKSPACE DIRECT CHILD
+   ========================================================= */
+
+.main-content > * {
+  width: 100%;
+  min-width: 0;
+
+  margin: 0;
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .app-body > aside {
+    flex: 0 0 220px;
+    width: 220px;
+    min-width: 220px;
+  }
+
+  .main-content {
+    width: calc(100% - 220px);
+  }
+}
+
+
+@media (max-width: 700px) {
+  .app-body > aside {
+    flex: 0 0 70px;
+    width: 70px;
+    min-width: 70px;
+  }
+
+  .main-content {
+    width: calc(100% - 70px);
+  }
 }
