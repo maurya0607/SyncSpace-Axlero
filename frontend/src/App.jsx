@@ -1,21 +1,21 @@
-import Navbar from './components/Navbar/Navbar'
-import Sidebar from './components/Sidebar/Sidebar'
-import Workspace from './components/Workspace/Workspace'
-import './App.css'
+import Navbar from "./components/Navbar/Navbar";
+import Sidebar from "./components/Sidebar/Sidebar";
+import Workspace from "./components/Workspace/Workspace";
 
 function App() {
   return (
     <div className="app">
-
       <Navbar />
 
-      <main className="main-layout">
+      <div className="app-body">
         <Sidebar />
-        <Workspace />
-      </main>
 
+        <main className="main-content">
+          <Workspace />
+        </main>
+      </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
