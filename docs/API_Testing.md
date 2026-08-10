@@ -27,3 +27,16 @@
 
 Backend APIs are not yet available.
 API testing will begin after backend implementation.
+
+
+# API Testing Plan (Day 3)
+
+## Socket Events
+
+- join-room
+- leave-room
+- room-message
+
+## Status
+
+Ready for testing after backend merge.
