@@ -96,5 +96,5 @@ socket.on("yjs-update", ({ roomId, update }) => {
 const PORT = 5000;
 
 server.listen(PORT, () => {
-    console.log(`SyncSpace server running on port ${PORT}`);
+    console.log(`SyncSpace server running on port http://localhost:${PORT}`);
 });
