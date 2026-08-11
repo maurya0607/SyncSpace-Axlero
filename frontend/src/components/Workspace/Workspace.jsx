@@ -1,112 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+import { useCallback, useEffect, useRef, useState } from "react";
+import CodeEditor from "./CodeEditor/CodeEditor";
 import "./Workspace.css";
-
-/* =========================================================
-   FILE HELPERS
-   ========================================================= */
-
-const getLanguage = (fileName) => {
-  const extension = fileName
-    .split(".")
-    .pop()
-    .toLowerCase();
-
-  const languages = {
-    js: "JavaScript",
-    jsx: "JavaScript",
-    ts: "TypeScript",
-    tsx: "TypeScript",
-    html: "HTML",
-    htm: "HTML",
-    css: "CSS",
-    py: "Python",
-    java: "Java",
-    c: "C",
-    h: "C",
-    cpp: "C++",
-    cc: "C++",
-    cxx: "C++",
-    json: "JSON",
-    sql: "SQL",
-    md: "Markdown",
-  };
-
-  return languages[extension] || "Plain Text";
-};
-
-
-const getFileIcon = (fileName) => {
-  const extension = fileName
-    .split(".")
-    .pop()
-    .toLowerCase();
-
-  switch (extension) {
-    case "js":
-    case "jsx":
-      return "JS";
-
-    case "ts":
-    case "tsx":
-      return "TS";
-
-    case "py":
-      return "PY";
-
-    case "html":
-    case "htm":
-      return "<>";
-
-    case "css":
-      return "#";
-
-    case "java":
-      return "JV";
-
-    case "c":
-      return "C";
-
-    case "cpp":
-    case "cc":
-    case "cxx":
-      return "C++";
-
-    case "json":
-      return "{}";
-
-    case "sql":
-      return "DB";
-
-    case "md":
-      return "MD";
-
-    default:
-      return "TXT";
-  }
-};
-
-
-/* =========================================================
-   DEFAULT FILE
-   ========================================================= */
-
-const defaultFiles = [
-  {
-    id: 1,
-    name: "index.js",
-    language: "JavaScript",
-    code: `function hello() {
-  console.log("Hello SyncSpace!");
-}`,
-  },
-];
-
 
 /* =========================================================
    DRAW SHAPE
@@ -140,11 +34,7 @@ const drawShape = (ctx, shape) => {
       shape.points[0].y
     );
 
-    for (
-      let i = 1;
-      i < shape.points.length;
-      i += 1
-    ) {
+    for (let i = 1; i < shape.points.length; i += 1) {
       ctx.lineTo(
         shape.points[i].x,
         shape.points[i].y
@@ -157,12 +47,18 @@ const drawShape = (ctx, shape) => {
     return;
   }
 
-
   /* ---------------- RECTANGLE ---------------- */
 
   if (shape.type === "rectangle") {
-    const x = Math.min(shape.startX, shape.endX);
-    const y = Math.min(shape.startY, shape.endY);
+    const x = Math.min(
+      shape.startX,
+      shape.endX
+    );
+
+    const y = Math.min(
+      shape.startY,
+      shape.endY
+    );
 
     const width = Math.abs(
       shape.endX - shape.startX
@@ -183,15 +79,18 @@ const drawShape = (ctx, shape) => {
     return;
   }
 
-
   /* ---------------- CIRCLE ---------------- */
 
   if (shape.type === "circle") {
     const radiusX =
-      Math.abs(shape.endX - shape.startX) / 2;
+      Math.abs(
+        shape.endX - shape.startX
+      ) / 2;
 
     const radiusY =
-      Math.abs(shape.endY - shape.startY) / 2;
+      Math.abs(
+        shape.endY - shape.startY
+      ) / 2;
 
     const centerX =
       (shape.startX + shape.endX) / 2;
@@ -241,9 +140,7 @@ function ToolButton({
           ? "active"
           : ""
       }`}
-      onClick={() =>
-        onSelect(value)
-      }
+      onClick={() => onSelect(value)}
       title={title}
     >
       {children}
@@ -286,7 +183,8 @@ function Whiteboard() {
     const rect =
       container.getBoundingClientRect();
 
-    const ctx = canvas.getContext("2d");
+    const ctx =
+      canvas.getContext("2d");
 
     if (!ctx) {
       return;
@@ -301,8 +199,11 @@ function Whiteboard() {
     canvas.width = width * dpr;
     canvas.height = height * dpr;
 
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+    canvas.style.width =
+      `${width}px`;
+
+    canvas.style.height =
+      `${height}px`;
 
     ctx.setTransform(
       dpr,
@@ -319,6 +220,11 @@ function Whiteboard() {
       width,
       height
     );
+
+    /*
+      Keep zoom centered around
+      the middle of the canvas.
+    */
 
     ctx.save();
 
@@ -382,7 +288,7 @@ function Whiteboard() {
 
 
   /* =====================================================
-     GET CANVAS POSITION
+     GET POINTER POSITION
      ===================================================== */
 
   const getPointerPosition = (event) => {
@@ -413,11 +319,13 @@ function Whiteboard() {
 
     return {
       x:
-        (rawX - centerX) / zoom +
+        (rawX - centerX) /
+          zoom +
         centerX,
 
       y:
-        (rawY - centerY) / zoom +
+        (rawY - centerY) /
+          zoom +
         centerY,
     };
   };
@@ -437,6 +345,12 @@ function Whiteboard() {
       getPointerPosition(event);
 
     drawingRef.current = true;
+
+    if (canvasRef.current) {
+      canvasRef.current.setPointerCapture(
+        event.pointerId
+      );
+    }
 
     if (tool === "pen") {
       currentShapeRef.current = {
@@ -501,12 +415,23 @@ function Whiteboard() {
      POINTER UP
      ===================================================== */
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (event) => {
     if (!drawingRef.current) {
       return;
     }
 
     drawingRef.current = false;
+
+    if (
+      canvasRef.current &&
+      canvasRef.current.hasPointerCapture(
+        event.pointerId
+      )
+    ) {
+      canvasRef.current.releasePointerCapture(
+        event.pointerId
+      );
+    }
 
     const completedShape =
       currentShapeRef.current;
@@ -547,13 +472,16 @@ function Whiteboard() {
     const filtered =
       shapesRef.current.filter(
         (shape) => {
+
           if (shape.type === "pen") {
             return !shape.points.some(
               (p) =>
-                Math.abs(p.x - point.x) <
-                  eraserSize &&
-                Math.abs(p.y - point.y) <
-                  eraserSize
+                Math.abs(
+                  p.x - point.x
+                ) < eraserSize &&
+                Math.abs(
+                  p.y - point.y
+                ) < eraserSize
             );
           }
 
@@ -586,10 +514,14 @@ function Whiteboard() {
               );
 
             return !(
-              point.x >= minX - eraserSize &&
-              point.x <= maxX + eraserSize &&
-              point.y >= minY - eraserSize &&
-              point.y <= maxY + eraserSize
+              point.x >=
+                minX - eraserSize &&
+              point.x <=
+                maxX + eraserSize &&
+              point.y >=
+                minY - eraserSize &&
+              point.y <=
+                maxY + eraserSize
             );
           }
 
@@ -597,7 +529,8 @@ function Whiteboard() {
         }
       );
 
-    shapesRef.current = filtered;
+    shapesRef.current =
+      filtered;
 
     setHasDrawing(
       filtered.length > 0
@@ -612,22 +545,28 @@ function Whiteboard() {
      ===================================================== */
 
   const undo = () => {
-    if (shapesRef.current.length === 0) {
+    if (
+      shapesRef.current.length === 0
+    ) {
       return;
     }
 
-    const copy =
-      [...shapesRef.current];
+    const copy = [
+      ...shapesRef.current,
+    ];
 
     const removed =
       copy.pop();
 
-    shapesRef.current = copy;
+    shapesRef.current =
+      copy;
 
-    setRedoStack((prev) => [
-      ...prev,
-      removed,
-    ]);
+    setRedoStack(
+      (prev) => [
+        ...prev,
+        removed,
+      ]
+    );
 
     setHasDrawing(
       copy.length > 0
@@ -642,12 +581,15 @@ function Whiteboard() {
      ===================================================== */
 
   const redo = () => {
-    if (redoStack.length === 0) {
+    if (
+      redoStack.length === 0
+    ) {
       return;
     }
 
-    const copy =
-      [...redoStack];
+    const copy = [
+      ...redoStack,
+    ];
 
     const restored =
       copy.pop();
@@ -665,11 +607,13 @@ function Whiteboard() {
 
 
   /* =====================================================
-     CLEAR
+     CLEAR CANVAS
      ===================================================== */
 
   const clearCanvas = () => {
-    if (shapesRef.current.length === 0) {
+    if (
+      shapesRef.current.length === 0
+    ) {
       return;
     }
 
@@ -704,7 +648,6 @@ function Whiteboard() {
     );
   };
 
-
   const zoomOut = () => {
     setZoom(
       (prev) =>
@@ -714,7 +657,6 @@ function Whiteboard() {
         )
     );
   };
-
 
   const resetZoom = () => {
     setZoom(1);
@@ -774,7 +716,6 @@ function Whiteboard() {
           🖊
         </ToolButton>
 
-
         <ToolButton
           value="eraser"
           title="Eraser"
@@ -783,7 +724,6 @@ function Whiteboard() {
         >
           ⌫
         </ToolButton>
-
 
         <ToolButton
           value="rectangle"
@@ -794,7 +734,6 @@ function Whiteboard() {
           □
         </ToolButton>
 
-
         <ToolButton
           value="circle"
           title="Circle"
@@ -804,9 +743,7 @@ function Whiteboard() {
           ○
         </ToolButton>
 
-
         <div className="toolbar-divider" />
-
 
         <button
           type="button"
@@ -817,7 +754,6 @@ function Whiteboard() {
           ↶
         </button>
 
-
         <button
           type="button"
           className="tool-button"
@@ -826,7 +762,6 @@ function Whiteboard() {
         >
           ↷
         </button>
-
 
         <button
           type="button"
@@ -850,11 +785,21 @@ function Whiteboard() {
         <canvas
           ref={canvasRef}
           className="whiteboard-canvas"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onPointerLeave={handlePointerUp}
+          onPointerDown={
+            handlePointerDown
+          }
+          onPointerMove={
+            handlePointerMove
+          }
+          onPointerUp={
+            handlePointerUp
+          }
+          onPointerCancel={
+            handlePointerUp
+          }
+          onPointerLeave={
+            handlePointerUp
+          }
         />
 
 
@@ -872,16 +817,17 @@ function Whiteboard() {
             </h3>
 
             <p>
-              Draw, sketch, and share ideas
-              with your team.
+              Draw, sketch, and share
+              ideas with your team.
             </p>
 
             <button
               type="button"
               className="start-drawing-button"
-              onClick={() =>
-                setTool("pen")
-              }
+              onClick={() => {
+                setHasDrawing(true);
+                setTool("pen");
+              }}
             >
               Start drawing
             </button>
@@ -906,7 +852,9 @@ function Whiteboard() {
             className="zoom-value"
             onClick={resetZoom}
           >
-            {Math.round(zoom * 100)}%
+            {Math.round(
+              zoom * 100
+            )}%
           </button>
 
           <button
@@ -919,705 +867,6 @@ function Whiteboard() {
         </div>
 
       </div>
-
-    </div>
-  );
-}
-
-
-/* =========================================================
-   CODE EDITOR
-   ========================================================= */
-
-function CodeEditor() {
-  const [files, setFiles] =
-    useState(defaultFiles);
-
-  const [activeFileId, setActiveFileId] =
-    useState(1);
-
-  const [showNewFile, setShowNewFile] =
-    useState(false);
-
-  const [newFileName, setNewFileName] =
-    useState("");
-
-  const [output, setOutput] =
-    useState("");
-
-  const [isRunning, setIsRunning] =
-    useState(false);
-
-  const [saved, setSaved] =
-    useState(true);
-
-  const textareaRef =
-    useRef(null);
-
-
-  /* =====================================================
-     ACTIVE FILE
-     ===================================================== */
-
-  const activeFile =
-    files.find(
-      (file) =>
-        file.id === activeFileId
-    ) || files[0];
-
-
-  /* =====================================================
-     CREATE FILE
-     ===================================================== */
-
-  const createNewFile = () => {
-    const name =
-      newFileName.trim();
-
-    if (!name) {
-      return;
-    }
-
-    const alreadyExists =
-      files.some(
-        (file) =>
-          file.name.toLowerCase() ===
-          name.toLowerCase()
-      );
-
-    if (alreadyExists) {
-      return;
-    }
-
-    const newFile = {
-      id: Date.now(),
-      name,
-      language: getLanguage(name),
-      code: "",
-    };
-
-    setFiles((prev) => [
-      ...prev,
-      newFile,
-    ]);
-
-    setActiveFileId(
-      newFile.id
-    );
-
-    setNewFileName("");
-
-    setShowNewFile(false);
-
-    setSaved(true);
-
-    setOutput("");
-  };
-
-
-  /* =====================================================
-     CLOSE FILE
-     ===================================================== */
-
-  const closeFile = (id) => {
-    if (files.length === 1) {
-      return;
-    }
-
-    const index =
-      files.findIndex(
-        (file) =>
-          file.id === id
-      );
-
-    const remainingFiles =
-      files.filter(
-        (file) =>
-          file.id !== id
-      );
-
-    setFiles(remainingFiles);
-
-    if (activeFileId === id) {
-      const nextFile =
-        remainingFiles[
-          Math.max(
-            0,
-            index - 1
-          )
-        ];
-
-      setActiveFileId(
-        nextFile.id
-      );
-    }
-
-    setOutput("");
-  };
-
-
-  /* =====================================================
-     UPDATE CODE
-     ===================================================== */
-
-  const updateFileCode = (value) => {
-    setFiles((prev) =>
-      prev.map((file) =>
-        file.id === activeFileId
-          ? {
-              ...file,
-              code: value,
-            }
-          : file
-      )
-    );
-
-    setSaved(false);
-  };
-
-
-  /* =====================================================
-     SAVE
-     ===================================================== */
-
-  const saveFile = useCallback(() => {
-    setSaved(true);
-  }, []);
-
-
-  /* =====================================================
-     KEYBOARD SHORTCUTS
-     ===================================================== */
-
-  useEffect(() => {
-    const handleKeyDown =
-      (event) => {
-        if (
-          (event.ctrlKey ||
-            event.metaKey) &&
-          event.key.toLowerCase() ===
-            "s"
-        ) {
-          event.preventDefault();
-
-          saveFile();
-        }
-      };
-
-    window.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
-
-    return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
-    };
-  }, [saveFile]);
-
-
-  /* =====================================================
-     TAB KEY
-     ===================================================== */
-
-  const handleEditorKeyDown =
-    (event) => {
-      if (event.key === "Tab") {
-        event.preventDefault();
-
-        const textarea =
-          textareaRef.current;
-
-        if (!textarea) {
-          return;
-        }
-
-        const start =
-          textarea.selectionStart;
-
-        const end =
-          textarea.selectionEnd;
-
-        const value =
-          activeFile.code;
-
-        const newValue =
-          value.substring(
-            0,
-            start
-          ) +
-          "  " +
-          value.substring(end);
-
-        updateFileCode(
-          newValue
-        );
-
-        requestAnimationFrame(() => {
-          textarea.selectionStart =
-            start + 2;
-
-          textarea.selectionEnd =
-            start + 2;
-        });
-      }
-    };
-
-
-  /* =====================================================
-     RUN JAVASCRIPT
-     ===================================================== */
-
-  const runCode = () => {
-    if (!activeFile) {
-      return;
-    }
-
-    setIsRunning(true);
-
-    setOutput("");
-
-    if (
-      activeFile.language !==
-      "JavaScript"
-    ) {
-      setOutput(
-        `${activeFile.language} execution is not connected yet.\n\nJavaScript execution is currently supported in the browser.`
-      );
-
-      setIsRunning(false);
-
-      return;
-    }
-
-    try {
-      const logs = [];
-
-      const originalLog =
-        console.log;
-
-      console.log =
-        (...args) => {
-          logs.push(
-            args
-              .map((arg) => {
-                if (
-                  typeof arg ===
-                  "object"
-                ) {
-                  try {
-                    return JSON.stringify(
-                      arg,
-                      null,
-                      2
-                    );
-                  } catch {
-                    return String(arg);
-                  }
-                }
-
-                return String(arg);
-              })
-              .join(" ")
-          );
-
-          originalLog(...args);
-        };
-
-      const result =
-        Function(
-          activeFile.code
-        )();
-
-      console.log =
-        originalLog;
-
-      if (logs.length > 0) {
-        setOutput(
-          logs.join("\n")
-        );
-      } else if (
-        result !== undefined
-      ) {
-        setOutput(
-          String(result)
-        );
-      } else {
-        setOutput(
-          "Code executed successfully."
-        );
-      }
-    } catch (error) {
-      setOutput(
-        `Error: ${error.message}`
-      );
-    }
-
-    setIsRunning(false);
-  };
-
-
-  /* =====================================================
-     LINE NUMBERS
-     ===================================================== */
-
-  const codeLines =
-    (activeFile?.code || "")
-      .split("\n");
-
-
-  /* =====================================================
-     CODE EDITOR UI
-     ===================================================== */
-
-  return (
-    <div className="code-editor">
-
-      {/* HEADER */}
-
-      <div className="code-editor-header">
-
-        <div className="code-editor-title">
-
-          <div className="editor-icon">
-            {"</>"}
-          </div>
-
-          <div>
-            <h2>
-              Code Editor
-            </h2>
-
-            <span>
-              Collaborative coding
-            </span>
-          </div>
-
-        </div>
-
-
-        <div className="editor-actions">
-
-          <button
-            type="button"
-            className="run-button"
-            onClick={runCode}
-            disabled={isRunning}
-          >
-            {isRunning
-              ? "Running..."
-              : "▶ Run"}
-          </button>
-
-
-          <button
-            type="button"
-            className="panel-menu"
-            title="Code editor menu"
-          >
-            ...
-          </button>
-
-        </div>
-
-      </div>
-
-
-      {/* FILE TABS */}
-
-      <div className="file-tabs">
-
-        {files.map((file) => (
-          <div
-            key={file.id}
-            className={`file-tab ${
-              activeFileId === file.id
-                ? "active"
-                : ""
-            }`}
-            onClick={() => {
-              setActiveFileId(
-                file.id
-              );
-
-              setOutput("");
-            }}
-          >
-
-            <span className="file-language-icon">
-              {getFileIcon(
-                file.name
-              )}
-            </span>
-
-            <span className="file-name">
-              {file.name}
-            </span>
-
-            {files.length > 1 && (
-              <button
-                type="button"
-                className="close-file"
-                onClick={(event) => {
-                  event.stopPropagation();
-
-                  closeFile(
-                    file.id
-                  );
-                }}
-                title="Close file"
-              >
-                ×
-              </button>
-            )}
-
-          </div>
-        ))}
-
-
-        <button
-          type="button"
-          className="new-file-button"
-          onClick={() =>
-            setShowNewFile(true)
-          }
-          title="New file"
-        >
-          +
-        </button>
-
-      </div>
-
-
-      {/* INFO BAR */}
-
-      <div className="editor-info-bar">
-
-        <span>
-          {activeFile?.language ||
-            "Plain Text"}
-        </span>
-
-
-        <span className="saved-status">
-
-          <span
-            className={`saved-dot ${
-              saved
-                ? ""
-                : "unsaved"
-            }`}
-          />
-
-          {saved
-            ? "Saved"
-            : "Unsaved changes"}
-
-        </span>
-
-      </div>
-
-
-      {/* EDITOR */}
-
-      <div className="code-editor-body">
-
-        <div className="line-numbers">
-
-          {codeLines.map(
-            (_, index) => (
-              <div
-                key={index}
-                className="line-number"
-              >
-                {index + 1}
-              </div>
-            )
-          )}
-
-        </div>
-
-
-        <textarea
-          ref={textareaRef}
-          className="code-input"
-          value={
-            activeFile?.code || ""
-          }
-          onChange={(event) =>
-            updateFileCode(
-              event.target.value
-            )
-          }
-          onKeyDown={
-            handleEditorKeyDown
-          }
-          spellCheck="false"
-          autoCorrect="off"
-          autoCapitalize="off"
-          placeholder="Write your code here..."
-        />
-
-      </div>
-
-
-      {/* OUTPUT */}
-
-      {output !== "" && (
-        <div className="code-output">
-
-          <div className="output-header">
-
-            <span>
-              Output
-            </span>
-
-            <button
-              type="button"
-              onClick={() =>
-                setOutput("")
-              }
-            >
-              Clear
-            </button>
-
-          </div>
-
-          <pre>
-            {output}
-          </pre>
-
-        </div>
-      )}
-
-
-      {/* FOOTER */}
-
-      <div className="code-editor-footer">
-
-        <div>
-          Ln 1, Col 1
-        </div>
-
-        <div className="footer-right">
-
-          <span>
-            {activeFile?.language ||
-              "Plain Text"}
-          </span>
-
-          <span>
-            UTF-8
-          </span>
-
-          <span>
-            Spaces: 2
-          </span>
-
-        </div>
-
-      </div>
-
-
-      {/* NEW FILE MODAL */}
-
-      {showNewFile && (
-        <div className="new-file-overlay">
-
-          <div className="new-file-modal">
-
-            <h3>
-              Create New File
-            </h3>
-
-            <p>
-              Enter a file name
-              with an extension.
-            </p>
-
-
-            <input
-              type="text"
-              value={newFileName}
-              onChange={(event) =>
-                setNewFileName(
-                  event.target.value
-                )
-              }
-              onKeyDown={(event) => {
-                if (
-                  event.key ===
-                  "Enter"
-                ) {
-                  createNewFile();
-                }
-
-                if (
-                  event.key ===
-                  "Escape"
-                ) {
-                  setShowNewFile(false);
-
-                  setNewFileName("");
-                }
-              }}
-              placeholder="example.js"
-              autoFocus
-            />
-
-
-            {newFileName && (
-              <div className="file-preview">
-
-                <span>
-                  {getFileIcon(
-                    newFileName
-                  )}
-                </span>
-
-                <span>
-                  {getLanguage(
-                    newFileName
-                  )}
-                </span>
-
-              </div>
-            )}
-
-
-            <div className="new-file-actions">
-
-              <button
-                type="button"
-                className="cancel-file-button"
-                onClick={() => {
-                  setShowNewFile(false);
-
-                  setNewFileName("");
-                }}
-              >
-                Cancel
-              </button>
-
-
-              <button
-                type="button"
-                className="create-file-button"
-                onClick={
-                  createNewFile
-                }
-              >
-                Create File
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-      )}
 
     </div>
   );
@@ -1646,10 +895,12 @@ function Workspace() {
           </p>
         </div>
 
-
         <div className="workspace-status">
+
           <span className="status-dot" />
+
           Online
+
         </div>
 
       </div>
@@ -1659,10 +910,14 @@ function Workspace() {
 
       <div className="workspace-content">
 
+        {/* WHITEBOARD */}
+
         <div className="panel whiteboard-panel">
           <Whiteboard />
         </div>
 
+
+        {/* CODE EDITOR */}
 
         <div className="panel code-panel">
           <CodeEditor />
@@ -1673,6 +928,5 @@ function Workspace() {
     </section>
   );
 }
-
 
 export default Workspace;
