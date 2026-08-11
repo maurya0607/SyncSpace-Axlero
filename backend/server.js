@@ -3,6 +3,11 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 
+const {
+    getDocumentState,
+    applyDocumentUpdate
+} = require("./yjs/yjsManager");
+
 const app = express();
 
 app.use(cors());
@@ -53,6 +58,35 @@ io.on("connection", (socket) => {
             message: message
         });
     });
+
+    // Send the current Yjs document state to a client
+socket.on("yjs-sync-request", (roomId) => {
+    const state = getDocumentState(roomId);
+
+    socket.emit("yjs-sync", {
+        roomId,
+        update: state
+    });
+
+    console.log(`Yjs state sent to ${socket.id} for room: ${roomId}`);
+});
+
+// Receive and broadcast Yjs document updates
+socket.on("yjs-update", ({ roomId, update }) => {
+    try {
+        const appliedUpdate = applyDocumentUpdate(roomId, update);
+
+        socket.to(roomId).emit("yjs-update", {
+            socketId: socket.id,
+            roomId,
+            update: appliedUpdate
+        });
+
+        console.log(`Yjs update synchronized in room: ${roomId}`);
+    } catch (error) {
+        console.error("Yjs update error:", error);
+    }
+});
 
     // User disconnected
     socket.on("disconnect", () => {
