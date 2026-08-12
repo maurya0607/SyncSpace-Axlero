@@ -100,3 +100,10 @@ The purpose of API testing is to verify that the backend services are working co
 - Successfully tested the root API endpoint (`GET /`).
 - Updated API testing documentation.
 - Prepared test cases for upcoming backend features.
+
+## Day 5 Progress
+
+- Reviewed backend Socket.io implementation.
+- Verified server startup.
+- Verified room event implementation.
+- Updated API testing documentation.

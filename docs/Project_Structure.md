@@ -98,3 +98,54 @@ SyncSpace-Axlero/
 - Database integration is pending.
 - Authentication and Yjs integration will be added in the upcoming development phase.
 
+# Current Project Structure (Day 5)
+
+```text
+SyncSpace-Axlero/
+│
+├── backend/
+│   ├── node_modules/
+│   ├── yjs/
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── server.js
+│   └── test-yjs.js
+│
+├── docs/
+│   ├── API_Testing.md
+│   ├── Database.md
+│   ├── Deployment.md
+│   └── Project_Structure.md
+│
+├── frontend/
+│   ├── node_modules/
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   │   ├── Navbar/
+│   │   │   ├── Sidebar/
+│   │   │   └── Workspace/
+│   │   ├── pages/
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── .gitignore
+│   ├── eslint.config.js
+│   └── index.html
+│
+├── LICENSE
+└── README.md
+```
+
+## Current Status (Day 5)
+
+- Frontend basic layout completed.
+- Backend server setup completed.
+- Socket.io integration completed.
+- Yjs folder added for upcoming real-time collaboration.
+- Project documentation updated.
+- Database integration in progress.
+- Authentication pending.
+- Deployment pending.
