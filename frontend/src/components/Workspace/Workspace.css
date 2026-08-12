@@ -679,3 +679,21 @@
     height: auto;
   }
 }
+
+/* =========================================================
+   SYNCSPACE MODERN ROOM OVERRIDES
+   ========================================================= */
+.workspace{min-height:0;padding:0;background:#0f1013;color:#f4f4f6}
+.workspace-content{gap:10px}
+.panel{border-color:#292b32;border-radius:10px;background:#0f1013}
+.whiteboard{background:#0f1013}
+.panel-header{height:54px;padding:0 14px;border-bottom-color:#292b32;background:#0f1013}
+.panel-title{gap:9px}.panel-icon{width:28px;height:28px;border-radius:7px;background:#17191e;color:#8b6cff;font-size:14px}
+.panel-title h2{font:600 12px "Space Grotesk",sans-serif;color:#e3e4e8;letter-spacing:.01em}.panel-title span{font:9px "JetBrains Mono",monospace;color:#626671;margin-top:2px}
+.panel-menu{color:#666a75}.panel-menu:hover{background:#1a1c21;color:#fff}
+.whiteboard-toolbar{height:42px;gap:4px;padding:0 10px;border-bottom-color:#292b32;background:#101114}
+.tool-button{width:30px;height:30px;border-radius:6px;color:#777b86;font-size:13px}.tool-button:hover{background:#1c1e24;color:#ddd}.tool-button.active{background:#7c5cff;color:#fff}
+.toolbar-divider{height:20px;background:#292b32;margin:0 7px}
+.whiteboard-canvas-container{background-color:#0f1013;background-image:linear-gradient(#1a1c21 1px,transparent 1px),linear-gradient(90deg,#1a1c21 1px,transparent 1px);background-size:24px 24px}
+.canvas-message{width:280px}.canvas-icon{width:42px;height:42px;background:#15171c;border-color:#2a2c33;color:#8b6cff;box-shadow:none}.canvas-message h3{color:#e1e2e6;font:600 15px "Space Grotesk",sans-serif}.canvas-message p{color:#666a75;font:10px/1.6 Inter,sans-serif}.start-drawing-button{background:#7c5cff;border-radius:7px;font-size:11px}.start-drawing-button:hover{background:#8b6cff}
+.zoom-controls{right:12px;bottom:12px;border-color:#2c2e35;background:#15171c;box-shadow:0 10px 25px rgba(0,0,0,.25)}.zoom-controls button{background:#15171c;color:#818590;border-color:#2a2c33}.zoom-controls button:hover{background:#1e2026;color:#fff}.zoom-controls .zoom-value{color:#8e919b}

@@ -13,9 +13,9 @@ const drawShape = (ctx, shape) => {
 
   ctx.save();
 
-  ctx.strokeStyle = "#111111";
+  ctx.strokeStyle = "#E6E7EB";
   ctx.fillStyle = "transparent";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 2.5;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
@@ -169,8 +169,41 @@ function Whiteboard() {
 
 
   /* =====================================================
-     REDRAW CANVAS
+     CANVAS SETUP + REDRAW
+     Keep the canvas backing store stable while drawing.
+     Resizing canvas.width/height inside every pointer move
+     clears the canvas and can make drawing appear broken.
      ===================================================== */
+
+  const resizeCanvas = useCallback(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+
+    if (!canvas || !container) {
+      return;
+    }
+
+    const rect = container.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.floor(rect.width));
+    const height = Math.max(1, Math.floor(rect.height));
+
+    const targetWidth = Math.floor(width * dpr);
+    const targetHeight = Math.floor(height * dpr);
+
+    if (canvas.width !== targetWidth || canvas.height !== targetHeight) {
+      canvas.width = targetWidth;
+      canvas.height = targetHeight;
+    }
+
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }, []);
 
   const redraw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -180,112 +213,61 @@ function Whiteboard() {
       return;
     }
 
-    const rect =
-      container.getBoundingClientRect();
-
-    const ctx =
-      canvas.getContext("2d");
+    const rect = container.getBoundingClientRect();
+    const ctx = canvas.getContext("2d");
 
     if (!ctx) {
       return;
     }
 
-    const dpr =
-      window.devicePixelRatio || 1;
-
+    const dpr = window.devicePixelRatio || 1;
     const width = rect.width;
     const height = rect.height;
 
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-
-    canvas.style.width =
-      `${width}px`;
-
-    canvas.style.height =
-      `${height}px`;
-
-    ctx.setTransform(
-      dpr,
-      0,
-      0,
-      dpr,
-      0,
-      0
-    );
-
-    ctx.clearRect(
-      0,
-      0,
-      width,
-      height
-    );
-
-    /*
-      Keep zoom centered around
-      the middle of the canvas.
-    */
+    // Do NOT change canvas.width/height here. That would clear the canvas
+    // on every pointer move.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
 
     ctx.save();
+    ctx.translate(width / 2, height / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-width / 2, -height / 2);
 
-    ctx.translate(
-      width / 2,
-      height / 2
-    );
-
-    ctx.scale(
-      zoom,
-      zoom
-    );
-
-    ctx.translate(
-      -width / 2,
-      -height / 2
-    );
-
-    shapesRef.current.forEach(
-      (shape) => {
-        drawShape(ctx, shape);
-      }
-    );
+    shapesRef.current.forEach((shape) => drawShape(ctx, shape));
 
     if (currentShapeRef.current) {
-      drawShape(
-        ctx,
-        currentShapeRef.current
-      );
+      drawShape(ctx, currentShapeRef.current);
     }
 
     ctx.restore();
   }, [zoom]);
-
 
   /* =====================================================
      RESIZE OBSERVER
      ===================================================== */
 
   useEffect(() => {
-    const container =
-      containerRef.current;
+    const container = containerRef.current;
 
     if (!container) {
       return undefined;
     }
 
-    redraw();
+    const handleResize = () => {
+      resizeCanvas();
+      redraw();
+    };
 
-    const observer =
-      new ResizeObserver(() => {
-        redraw();
-      });
+    handleResize();
 
+    const observer = new ResizeObserver(handleResize);
     observer.observe(container);
 
     return () => {
       observer.disconnect();
     };
-  }, [redraw]);
-
+  }, [redraw, resizeCanvas]);
 
   /* =====================================================
      GET POINTER POSITION
@@ -336,6 +318,8 @@ function Whiteboard() {
      ===================================================== */
 
   const handlePointerDown = (event) => {
+    event.preventDefault();
+
     if (tool === "eraser") {
       eraseAtPosition(event);
       return;
@@ -416,6 +400,8 @@ function Whiteboard() {
      ===================================================== */
 
   const handlePointerUp = (event) => {
+    event.preventDefault();
+
     if (!drawingRef.current) {
       return;
     }
@@ -797,9 +783,10 @@ function Whiteboard() {
           onPointerCancel={
             handlePointerUp
           }
-          onPointerLeave={
-            handlePointerUp
-          }
+          onPointerLeave={() => {
+            // Pointer capture keeps the drawing active while the pointer
+            // temporarily leaves the canvas bounds.
+          }}
         />
 
 
