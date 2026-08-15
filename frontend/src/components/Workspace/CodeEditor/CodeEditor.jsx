@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io } from "socket.io-client";
 
 import "./CodeEditor.css";
 
@@ -174,6 +175,28 @@ function CodeEditor() {
   const textareaRef = useRef(null);
   const lineNumbersRef = useRef(null);
 
+  const socketRef = useRef(null);
+
+  const [remoteCursors, setRemoteCursors] = useState({});
+
+  // Keep the remote cursor overlay synchronized with the textarea viewport.
+  const [editorScroll, setEditorScroll] = useState({
+    top: 0,
+    left: 0,
+  });
+
+  const [userId] = useState(
+    () => `user-${Math.random().toString(36).substring(2, 9)}`,
+  );
+
+  const [userColor] = useState(
+    () => `hsl(${Math.floor(Math.random() * 360)}, 70%, 55%)`,
+  );
+
+  const roomId = decodeURIComponent(
+    window.location.pathname.split("/room/")[1] || "default-room",
+  );
+
   /* =======================================================
      ACTIVE FILE
      ======================================================= */
@@ -282,6 +305,8 @@ function CodeEditor() {
     const textBeforeCursor = textarea.value.slice(0, cursor);
     const lines = textBeforeCursor.split("\n");
 
+    // Keep cursor coordinates 1-based:
+    // line 1 / column 1 means "before the first character".
     const line = lines.length;
     const column = lines[lines.length - 1].length + 1;
 
@@ -290,6 +315,27 @@ function CodeEditor() {
       column,
     });
   }, []);
+
+  /* =======================================================
+     SEND CURSOR / AWARENESS UPDATE
+     ======================================================= */
+
+  useEffect(() => {
+    if (!socketRef.current) {
+      return;
+    }
+
+    socketRef.current.emit("awareness-update", {
+      roomId,
+      awareness: {
+        userId,
+        userColor,
+        line: cursorPosition.line,
+        column: cursorPosition.column,
+        fileId: activeFileId,
+      },
+    });
+  }, [cursorPosition, roomId, userId, userColor, activeFileId]);
 
   /* =======================================================
      SAVE CURRENT FILE
@@ -743,21 +789,26 @@ function CodeEditor() {
    ======================================================= */
 
   const handleEditorScroll = useCallback((event) => {
-  const textarea = event.currentTarget;
+    const textarea = event.currentTarget;
 
-  if (lineNumbersRef.current) {
-    lineNumbersRef.current.scrollTop = textarea.scrollTop;
-  }
+    if (lineNumbersRef.current) {
+      lineNumbersRef.current.scrollTop = textarea.scrollTop;
+    }
 
-  const highlight = textarea.parentElement?.querySelector(
-    ".code-highlight"
-  );
+    const highlight = textarea.parentElement?.querySelector(".code-highlight");
 
-  if (highlight) {
-    highlight.scrollTop = textarea.scrollTop;
-    highlight.scrollLeft = textarea.scrollLeft;
-  }
-}, []);
+    if (highlight) {
+      highlight.scrollTop = textarea.scrollTop;
+      highlight.scrollLeft = textarea.scrollLeft;
+    }
+
+    // The remote cursor is an overlay, so it must use the same
+    // scroll offsets as the textarea.
+    setEditorScroll({
+      top: textarea.scrollTop,
+      left: textarea.scrollLeft,
+    });
+  }, []);
 
   /* =======================================================
    KEYBOARD HANDLING
@@ -767,41 +818,41 @@ function CodeEditor() {
     (event) => {
       const textarea = event.currentTarget;
 
-          /* ---------------------------------------------------
+      /* ---------------------------------------------------
        SKIP EXISTING CLOSING CHARACTER
        --------------------------------------------------- */
 
-    const closingCharacters = {
-      ")": ")",
-      "]": "]",
-      "}": "}",
-      '"': '"',
-      "'": "'",
-      "`": "`",
-    };
+      const closingCharacters = {
+        ")": ")",
+        "]": "]",
+        "}": "}",
+        '"': '"',
+        "'": "'",
+        "`": "`",
+      };
 
-    if (
-      closingCharacters[event.key] &&
-      textarea.selectionStart === textarea.selectionEnd
-    ) {
-      const cursorPosition = textarea.selectionStart;
-      const value = textarea.value;
+      if (
+        closingCharacters[event.key] &&
+        textarea.selectionStart === textarea.selectionEnd
+      ) {
+        const cursorPosition = textarea.selectionStart;
+        const value = textarea.value;
 
-      const nextCharacter = value[cursorPosition];
+        const nextCharacter = value[cursorPosition];
 
-      if (nextCharacter === event.key) {
-        event.preventDefault();
+        if (nextCharacter === event.key) {
+          event.preventDefault();
 
-        const newPosition = cursorPosition + 1;
+          const newPosition = cursorPosition + 1;
 
-        textarea.selectionStart = newPosition;
-        textarea.selectionEnd = newPosition;
+          textarea.selectionStart = newPosition;
+          textarea.selectionEnd = newPosition;
 
-        updateCursorPosition(textarea);
+          updateCursorPosition(textarea);
 
-        return;
+          return;
+        }
       }
-    }
 
       /* ---------------------------------------------------
        CTRL + S / CMD + S
@@ -963,8 +1014,7 @@ function CodeEditor() {
             line.replace(commentPattern, "$1"),
           );
         } else {
-
-        /* -----------------------------------------------
+          /* -----------------------------------------------
      Comment
      ----------------------------------------------- */
           updatedLines = lines.map((line) => {
@@ -1009,59 +1059,57 @@ function CodeEditor() {
         return;
       }
 
-          /* ---------------------------------------------------
+      /* ---------------------------------------------------
        SMART BACKSPACE FOR PAIRS
        --------------------------------------------------- */
 
-    if (
-      event.key === "Backspace" &&
-      textarea.selectionStart === textarea.selectionEnd
-    ) {
-      const cursorPosition = textarea.selectionStart;
+      if (
+        event.key === "Backspace" &&
+        textarea.selectionStart === textarea.selectionEnd
+      ) {
+        const cursorPosition = textarea.selectionStart;
 
-      if (cursorPosition > 0) {
-        const value = textarea.value;
+        if (cursorPosition > 0) {
+          const value = textarea.value;
 
-        const previousCharacter = value[cursorPosition - 1];
-        const nextCharacter = value[cursorPosition];
+          const previousCharacter = value[cursorPosition - 1];
+          const nextCharacter = value[cursorPosition];
 
-        const pairedCharacters = {
-          "(": ")",
-          "[": "]",
-          "{": "}",
-          '"': '"',
-          "'": "'",
-          "`": "`",
-        };
+          const pairedCharacters = {
+            "(": ")",
+            "[": "]",
+            "{": "}",
+            '"': '"',
+            "'": "'",
+            "`": "`",
+          };
 
-        if (
-          pairedCharacters[previousCharacter] === nextCharacter
-        ) {
-          event.preventDefault();
+          if (pairedCharacters[previousCharacter] === nextCharacter) {
+            event.preventDefault();
 
-          const newValue =
-            value.substring(0, cursorPosition - 1) +
-            value.substring(cursorPosition + 1);
+            const newValue =
+              value.substring(0, cursorPosition - 1) +
+              value.substring(cursorPosition + 1);
 
-          updateFileCode(newValue);
+            updateFileCode(newValue);
 
-          requestAnimationFrame(() => {
-            if (!textareaRef.current) {
-              return;
-            }
+            requestAnimationFrame(() => {
+              if (!textareaRef.current) {
+                return;
+              }
 
-            const newPosition = cursorPosition - 1;
+              const newPosition = cursorPosition - 1;
 
-            textareaRef.current.selectionStart = newPosition;
-            textareaRef.current.selectionEnd = newPosition;
+              textareaRef.current.selectionStart = newPosition;
+              textareaRef.current.selectionEnd = newPosition;
 
-            updateCursorPosition(textareaRef.current);
-          });
+              updateCursorPosition(textareaRef.current);
+            });
 
-          return;
+            return;
+          }
         }
       }
-    }
       /* ---------------------------------------------------
        SMART BRACKETS & QUOTES
        --------------------------------------------------- */
@@ -1583,6 +1631,64 @@ function CodeEditor() {
   }, []);
 
   /* =======================================================
+   TASK 2: AWARENESS / CURSOR SYNCHRONIZATION
+   ======================================================= */
+  useEffect(() => {
+    const socket = io("http://localhost:5000");
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("Connected to SyncSpace:", socket.id);
+
+      socket.emit("join-room", roomId);
+
+      // Send initial cursor position
+      socket.emit("awareness-update", {
+        roomId,
+        awareness: {
+          userId,
+          userColor,
+          line: cursorPosition.line,
+          column: cursorPosition.column,
+          fileId: activeFileId,
+        },
+      });
+    });
+
+    socket.on("awareness-update", ({ socketId, awareness }) => {
+      console.log("Remote cursor received:", socketId, awareness);
+
+      setRemoteCursors((current) => ({
+        ...current,
+        [socketId]: awareness,
+      }));
+    });
+
+    socket.on("awareness-remove", ({ socketId }) => {
+      setRemoteCursors((current) => {
+        const updated = { ...current };
+        delete updated[socketId];
+        return updated;
+      });
+    });
+
+    return () => {
+      socket.emit("awareness-remove", { roomId });
+      socket.emit("leave-room", roomId);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [
+    roomId,
+    userId,
+    userColor,
+    cursorPosition.line,
+    cursorPosition.column,
+    activeFileId,
+  ]);
+
+  /* =======================================================
      GLOBAL CTRL + S
      ======================================================= */
 
@@ -1800,6 +1906,98 @@ function CodeEditor() {
         {/* TEXT EDITOR */}
 
         <div className="editor-textarea-wrapper">
+          {/* Remote user cursors */}
+          {Object.entries(remoteCursors)
+            .filter(([, awareness]) => awareness.fileId === activeFileId)
+            .map(([socketId, awareness]) => {
+              const textarea = textareaRef.current;
+
+              if (!textarea) {
+                return null;
+              }
+
+              const styles = window.getComputedStyle(textarea);
+
+              const lineHeight =
+                parseFloat(styles.lineHeight) ||
+                parseFloat(styles.fontSize) ||
+                14;
+
+              const paddingTop = parseFloat(styles.paddingTop) || 0;
+              const paddingLeft = parseFloat(styles.paddingLeft) || 0;
+
+              // Awareness positions are 1-based:
+              // line 1 / column 1 = before the first character.
+              const line = Math.max(1, Number(awareness.line) || 1);
+              const column = Math.max(1, Number(awareness.column) || 1);
+
+              const codeLines = activeFile.code.split("\n");
+              const currentLine = codeLines[line - 1] || "";
+
+              // Convert the 1-based cursor column into a character
+              // offset. For example:
+              // column 1 -> 0 characters before cursor
+              // column 2 -> 1 character before cursor
+              const characterOffset = Math.min(
+                Math.max(0, column - 1),
+                currentLine.length,
+              );
+
+              const textBeforeCursor = currentLine.slice(0, characterOffset);
+
+              // Use the exact font settings of the textarea instead of
+              // assuming that every character is a fixed number of pixels.
+              const canvas = document.createElement("canvas");
+              const context = canvas.getContext("2d");
+
+              let textWidth = 0;
+
+              if (context) {
+                context.font = [
+                  styles.fontStyle,
+                  styles.fontVariant,
+                  styles.fontWeight,
+                  styles.fontSize,
+                  styles.fontFamily,
+                ].join(" ");
+
+                textWidth = context.measureText(textBeforeCursor).width;
+              }
+
+              const top =
+                paddingTop +
+                (line - 1) * lineHeight -
+                editorScroll.top;
+
+              const left =
+                paddingLeft +
+                textWidth -
+                editorScroll.left;
+
+              return (
+                <div
+                  key={socketId}
+                  className="remote-cursor-indicator"
+                  style={{
+                    top: `${top}px`,
+                    left: `${left}px`,
+                    borderLeft: `2px solid ${
+                      awareness.userColor || "#ff4d4d"
+                    }`,
+                  }}
+                >
+                  <span
+                    className="remote-cursor-label"
+                    style={{
+                      backgroundColor:
+                        awareness.userColor || "#ff4d4d",
+                    }}
+                  >
+                    {awareness.userId || "User"}
+                  </span>
+                </div>
+              );
+            })}
           <pre
             className="code-highlight"
             aria-hidden="true"
