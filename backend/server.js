@@ -3,6 +3,12 @@ const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 
+const {
+  addUser,
+  removeUser,
+  getUsers
+} = require("./services/presence");
+
 const app = express();
 
 app.use(cors());
@@ -26,25 +32,33 @@ io.on("connection", (socket) => {
 
     // Join a collaborative room
     socket.on("join-room", (roomId) => {
-        socket.join(roomId);
+    socket.join(roomId);
 
-        console.log(`${socket.id} joined room: ${roomId}`);
+    addUser(roomId, socket.id);
 
-        socket.to(roomId).emit("user-joined", {
-            socketId: socket.id
-        });
+    console.log(`${socket.id} joined room: ${roomId}`);
+
+    io.to(roomId).emit("users-in-room", getUsers(roomId));
+
+    socket.to(roomId).emit("user-joined", {
+        socketId: socket.id
     });
+});
 
     // Leave a collaborative room
-    socket.on("leave-room", (roomId) => {
-        socket.leave(roomId);
+   socket.on("leave-room", (roomId) => {
+    socket.leave(roomId);
 
-        console.log(`${socket.id} left room: ${roomId}`);
+    removeUser(roomId, socket.id);
 
-        socket.to(roomId).emit("user-left", {
-            socketId: socket.id
-        });
+    console.log(`${socket.id} left room: ${roomId}`);
+
+    io.to(roomId).emit("users-in-room", getUsers(roomId));
+
+    socket.to(roomId).emit("user-left", {
+        socketId: socket.id
     });
+});
 
     // Send a message/event to users in the same room
     socket.on("room-message", ({ roomId, message }) => {
@@ -55,12 +69,30 @@ io.on("connection", (socket) => {
     });
 
     // User disconnected
-    socket.on("disconnect", () => {
-        console.log("User disconnected:", socket.id);
-    });
-});
-const PORT = 5000;
+socket.on("disconnect", () => {
 
+    const joinedRooms = [...socket.rooms].filter(
+        room => room !== socket.id
+    );
+
+    joinedRooms.forEach((roomId) => {
+        removeUser(roomId, socket.id);
+
+        io.to(roomId).emit(
+            "users-in-room",
+            getUsers(roomId)
+        );
+
+        socket.to(roomId).emit("user-left", {
+            socketId: socket.id
+        });
+    });
+
+    console.log("User disconnected:", socket.id);
+});
+});
+
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`SyncSpace server running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
