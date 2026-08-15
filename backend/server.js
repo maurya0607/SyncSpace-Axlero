@@ -49,6 +49,11 @@ io.on("connection", (socket) => {
         socket.to(roomId).emit("user-left", {
             socketId: socket.id
         });
+
+        // Remove awareness when user leaves
+        socket.to(roomId).emit("awareness-remove", {
+            socketId: socket.id
+        });
     });
 
     // Send a message/event to users in the same room
@@ -59,42 +64,80 @@ io.on("connection", (socket) => {
         });
     });
 
+    // =========================================================
+    // TASK 1: Yjs / CRDT Synchronization
+    // =========================================================
+
     // Send the current Yjs document state to a client
-socket.on("yjs-sync-request", (roomId) => {
-    const state = getDocumentState(roomId);
+    socket.on("yjs-sync-request", (roomId) => {
+        const state = getDocumentState(roomId);
 
-    socket.emit("yjs-sync", {
-        roomId,
-        update: state
-    });
-
-    console.log(`Yjs state sent to ${socket.id} for room: ${roomId}`);
-});
-
-// Receive and broadcast Yjs document updates
-socket.on("yjs-update", ({ roomId, update }) => {
-    try {
-        const appliedUpdate = applyDocumentUpdate(roomId, update);
-
-        socket.to(roomId).emit("yjs-update", {
-            socketId: socket.id,
+        socket.emit("yjs-sync", {
             roomId,
-            update: appliedUpdate
+            update: state
         });
 
-        console.log(`Yjs update synchronized in room: ${roomId}`);
-    } catch (error) {
-        console.error("Yjs update error:", error);
-    }
-});
+        console.log(
+            `Yjs state sent to ${socket.id} for room: ${roomId}`
+        );
+    });
+
+    // Receive and broadcast Yjs document updates
+    socket.on("yjs-update", ({ roomId, update }) => {
+        try {
+            const appliedUpdate = applyDocumentUpdate(roomId, update);
+
+            socket.to(roomId).emit("yjs-update", {
+                socketId: socket.id,
+                roomId,
+                update: appliedUpdate
+            });
+
+            console.log(
+                `Yjs update synchronized in room: ${roomId}`
+            );
+        } catch (error) {
+            console.error("Yjs update error:", error);
+        }
+    });
+
+    // =========================================================
+    // TASK 2: Awareness / Cursor Synchronization
+    // =========================================================
+
+    // Receive cursor/awareness information from a client
+    socket.on("awareness-update", ({ roomId, awareness }) => {
+        socket.to(roomId).emit("awareness-update", {
+            socketId: socket.id,
+            awareness
+        });
+
+        console.log(
+            `Awareness update from ${socket.id} in room: ${roomId}`
+        );
+    });
+
+    // Remove user's cursor/awareness
+    socket.on("awareness-remove", ({ roomId }) => {
+        socket.to(roomId).emit("awareness-remove", {
+            socketId: socket.id
+        });
+
+        console.log(
+            `Awareness removed for ${socket.id} from room: ${roomId}`
+        );
+    });
 
     // User disconnected
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
     });
 });
+
 const PORT = 5000;
 
 server.listen(PORT, () => {
-    console.log(`SyncSpace server running on port http://localhost:${PORT}`);
+    console.log(
+        `SyncSpace server running on port http://localhost:${PORT}`
+    );
 });

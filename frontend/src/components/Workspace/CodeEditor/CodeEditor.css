@@ -1446,3 +1446,30 @@
 .code-highlight .token.variable {
   color: #9cdcfe;
 }
+
+/* =======================================================
+   TASK 2: REMOTE CURSOR
+   ======================================================= */
+
+
+
+.remote-cursor-indicator {
+  position: absolute;
+  width: 2px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.remote-cursor-label {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: white;
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+}
