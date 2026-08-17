@@ -51,7 +51,7 @@ function RoomPage({ roomId, onHome }) {
       </div>
 
       <main className="room-main">
-        <Workspace />
+        <Workspace roomId={roomId}/>
       </main>
     </div>
   );
