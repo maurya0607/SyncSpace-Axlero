@@ -1,3 +1,10 @@
+const Room = require("./models/Room");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db");
+
+dotenv.config();
+connectDB();
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -40,10 +47,18 @@ io.on("connection", (socket) => {
   // ===========================
   // Join Room
   // ===========================
-  socket.on("join-room", (roomId) => {
+  socket.on("join-room", async (roomId) => {
     socket.join(roomId);
 
     addUser(roomId, socket.id);
+    await Room.findOneAndUpdate(
+  { roomId },
+  {
+    roomId,
+    activeUsers: getUsers(roomId).length,
+  },
+  { upsert: true, new: true }
+);
 
     console.log(`${socket.id} joined room: ${roomId}`);
 
@@ -57,10 +72,16 @@ io.on("connection", (socket) => {
   // ===========================
   // Leave Room
   // ===========================
-  socket.on("leave-room", (roomId) => {
+  socket.on("leave-room", async (roomId) => {
     socket.leave(roomId);
 
     removeUser(roomId, socket.id);
+    await Room.findOneAndUpdate(
+  { roomId },
+  {
+    activeUsers: getUsers(roomId).length,
+  }
+);
 
     console.log(`${socket.id} left room: ${roomId}`);
 
@@ -164,6 +185,8 @@ io.on("connection", (socket) => {
 
 const PORT = process.env.PORT || 3001;
 
-server.listen(PORT, () => {
-  console.log(`SyncSpace server running on port ${PORT}`);
+connectDB().then(() => {
+    server.listen(PORT, () => {
+        console.log(`SyncSpace server running on port ${PORT}`);
+    });
 });
