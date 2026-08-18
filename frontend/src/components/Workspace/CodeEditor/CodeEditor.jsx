@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { io } from "socket.io-client";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import "./CodeEditor.css";
 
@@ -9,6 +15,12 @@ import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-markup";
 import "prismjs/components/prism-css";
+import "prismjs/components/prism-json";
+import "prismjs/components/prism-typescript";
+
+/* =========================================================
+   STORAGE
+   ========================================================= */
 
 const STORAGE_KEY = "syncspace-code-editor";
 
@@ -28,10 +40,17 @@ const DEFAULT_FILES = [
   console.log("Hello SyncSpace!");
 }`,
   },
+  {
+    id: "test-js",
+    name: "test.js",
+    language: "JavaScript",
+    code: `console.log("Hello from SyncSpace!");`,
+    savedCode: `console.log("Hello from SyncSpace!");`,
+  },
 ];
 
 /* =========================================================
-   LANGUAGE HELPERS
+   LANGUAGE MAP
    ========================================================= */
 
 const LANGUAGE_BY_EXTENSION = {
@@ -51,17 +70,22 @@ const LANGUAGE_BY_EXTENSION = {
 
   ts: "TypeScript",
   tsx: "TypeScript",
+
+  txt: "Plain Text",
 };
 
 /* =========================================================
-   GET LANGUAGE FROM FILE NAME
+   PRISM LANGUAGE MAP
    ========================================================= */
 
-function getLanguageFromFileName(fileName) {
-  const extension = fileName.split(".").pop()?.toLowerCase();
-
-  return LANGUAGE_BY_EXTENSION[extension] || "Plain Text";
-}
+const PRISM_LANGUAGE_MAP = {
+  JavaScript: "javascript",
+  Python: "python",
+  HTML: "markup",
+  CSS: "css",
+  JSON: "json",
+  TypeScript: "typescript",
+};
 
 /* =========================================================
    TAB LANGUAGE LABEL
@@ -81,9 +105,19 @@ function getTabLanguageLabel(language) {
   return labels[language] || "TXT";
 }
 
-/* =======================================================
-   LOAD EDITOR DATA FROM LOCAL STORAGE
-   ======================================================= */
+/* =========================================================
+   GET LANGUAGE FROM FILE NAME
+   ========================================================= */
+
+function getLanguageFromFileName(fileName) {
+  const extension = fileName.split(".").pop()?.toLowerCase();
+
+  return LANGUAGE_BY_EXTENSION[extension] || "Plain Text";
+}
+
+/* =========================================================
+   LOAD LOCAL STORAGE
+   ========================================================= */
 
 function loadEditorData() {
   try {
@@ -93,7 +127,13 @@ function loadEditorData() {
       return null;
     }
 
-    return JSON.parse(storedData);
+    const parsed = JSON.parse(storedData);
+
+    if (!parsed || !Array.isArray(parsed.files)) {
+      return null;
+    }
+
+    return parsed;
   } catch (error) {
     console.error("Failed to load Code Editor data:", error);
 
@@ -102,35 +142,79 @@ function loadEditorData() {
 }
 
 /* =========================================================
+   CREATE SAFE LOCAL FILE STATE
+   ========================================================= */
+
+function normalizeFiles(files) {
+  if (!Array.isArray(files) || !files.length) {
+    return DEFAULT_FILES;
+  }
+
+  return files.map((file, index) => ({
+    id: file.id || `${file.name || "file"}-${index}`,
+    name: file.name || `file-${index + 1}.js`,
+    language: file.language || getLanguageFromFileName(file.name || ""),
+    code: typeof file.code === "string" ? file.code : "",
+    savedCode:
+      typeof file.savedCode === "string"
+        ? file.savedCode
+        : typeof file.code === "string"
+          ? file.code
+          : "",
+  }));
+}
+
+/* =========================================================
    CODE EDITOR
    ========================================================= */
 
-function CodeEditor() {
+function CodeEditor({ socket, roomId: roomIdProp }) {
+  /* =======================================================
+     ROOM ID
+     ======================================================= */
+
+  const roomId =
+    roomIdProp ||
+    decodeURIComponent(
+      window.location.pathname.split("/room/")[1] || "default-room",
+    );
+
+  /* =======================================================
+     LOCAL STORAGE INITIAL DATA
+     ======================================================= */
+
+  const storedEditorData = useMemo(() => loadEditorData(), []);
+
   /* =======================================================
      FILE STATE
      ======================================================= */
 
-  const [files, setFiles] = useState(() => {
-    const storedData = loadEditorData();
+  const [files, setFiles] = useState(() =>
+    normalizeFiles(storedEditorData?.files || DEFAULT_FILES),
+  );
 
-    return storedData?.files?.length ? storedData.files : DEFAULT_FILES;
-  });
+  /* =======================================================
+     ACTIVE FILE
+     ======================================================= */
 
   const [activeFileId, setActiveFileId] = useState(() => {
-    const storedData = loadEditorData();
+    const storedId = storedEditorData?.activeFileId;
+
+    const storedFiles = storedEditorData?.files;
 
     if (
-      storedData?.activeFileId &&
-      storedData?.files?.some((file) => file.id === storedData.activeFileId)
+      storedId &&
+      Array.isArray(storedFiles) &&
+      storedFiles.some((file) => file.id === storedId)
     ) {
-      return storedData.activeFileId;
+      return storedId;
     }
 
     return DEFAULT_FILES[0].id;
   });
 
   /* =======================================================
-     OUTPUT STATE
+     OUTPUT
      ======================================================= */
 
   const [output, setOutput] = useState([
@@ -138,7 +222,7 @@ function CodeEditor() {
   ]);
 
   /* =======================================================
-     CURSOR STATE
+     CURSOR
      ======================================================= */
 
   const [cursorPosition, setCursorPosition] = useState({
@@ -147,7 +231,7 @@ function CodeEditor() {
   });
 
   /* =======================================================
-     NEW FILE MODAL STATE
+     MODALS
      ======================================================= */
 
   const [showNewFileModal, setShowNewFileModal] = useState(false);
@@ -156,46 +240,83 @@ function CodeEditor() {
 
   const [showRenameModal, setShowRenameModal] = useState(false);
 
+  const [renameFileName, setRenameFileName] = useState("");
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const [filePendingDelete, setFilePendingDelete] = useState(null);
 
-  const [showFileMenu, setShowFileMenu] = useState(false);
-
-  const [renameFileName, setRenameFileName] = useState("");
-
   const [showUnsavedModal, setShowUnsavedModal] = useState(false);
 
   const [filePendingClose, setFilePendingClose] = useState(null);
+
+  const [showFileMenu, setShowFileMenu] = useState(false);
 
   /* =======================================================
      REFS
      ======================================================= */
 
   const textareaRef = useRef(null);
+
   const lineNumbersRef = useRef(null);
 
-  const socketRef = useRef(null);
+  const previousFilesRef = useRef(null);
+
+  /*
+   * IMPORTANT:
+   *
+   * When a remote code update is received,
+   * we change React state.
+   *
+   * That state change must NOT be sent back
+   * to the server as if it were a local change.
+   */
+
+  const applyingRemoteCodeRef = useRef(false);
+
+  const hasReceivedInitialSyncRef = useRef(false);
+
+  const codeRevisionRef = useRef(0);
+
+  const localChangePendingRef = useRef(false);
+
+  /* =======================================================
+     REMOTE CURSORS
+     ======================================================= */
 
   const [remoteCursors, setRemoteCursors] = useState({});
 
-  // Keep the remote cursor overlay synchronized with the textarea viewport.
+  const [remoteCursorPositions, setRemoteCursorPositions] = useState({});
+
   const [editorScroll, setEditorScroll] = useState({
     top: 0,
     left: 0,
   });
 
+  /* =======================================================
+     USER ID
+     ======================================================= */
+
   const [userId] = useState(
     () => `user-${Math.random().toString(36).substring(2, 9)}`,
   );
 
-  const [userColor] = useState(
-    () => `hsl(${Math.floor(Math.random() * 360)}, 70%, 55%)`,
-  );
+  /* =======================================================
+     USER COLOR
+     ======================================================= */
 
-  const roomId = decodeURIComponent(
-    window.location.pathname.split("/room/")[1] || "default-room",
-  );
+  const [userColor] = useState(() => {
+    const colors = [
+      "#7c3aed",
+      "#2563eb",
+      "#059669",
+      "#dc2626",
+      "#ea580c",
+      "#0891b2",
+    ];
+
+    return colors[Math.floor(Math.random() * colors.length)];
+  });
 
   /* =======================================================
      ACTIVE FILE
@@ -205,30 +326,30 @@ function CodeEditor() {
     return files.find((file) => file.id === activeFileId) || files[0] || null;
   }, [files, activeFileId]);
 
+  /* =======================================================
+     SYNTAX HIGHLIGHTING
+     ======================================================= */
+
   const highlightedCode = useMemo(() => {
     if (!activeFile) {
       return "";
     }
 
-    const languageMap = {
-      JavaScript: "javascript",
-      Python: "python",
-      HTML: "markup",
-      CSS: "css",
-      JSON: "json",
-      TypeScript: "typescript",
-    };
+    const prismLanguage = PRISM_LANGUAGE_MAP[activeFile.language];
 
-    const prismLanguage = languageMap[activeFile.language] || "javascript";
+    if (!prismLanguage) {
+      return escapeHtml(activeFile.code);
+    }
 
     const grammar = Prism.languages[prismLanguage];
 
     if (!grammar) {
-      return activeFile.code;
+      return escapeHtml(activeFile.code);
     }
 
     return Prism.highlight(activeFile.code, grammar, prismLanguage);
   }, [activeFile]);
+
   /* =======================================================
      LINE NUMBERS
      ======================================================= */
@@ -240,7 +361,12 @@ function CodeEditor() {
 
     const lineCount = Math.max(1, activeFile.code.split("\n").length);
 
-    return Array.from({ length: lineCount }, (_, index) => index + 1);
+    return Array.from(
+      {
+        length: lineCount,
+      },
+      (_, index) => index + 1,
+    );
   }, [activeFile]);
 
   /* =======================================================
@@ -256,21 +382,512 @@ function CodeEditor() {
   }, [activeFile]);
 
   /* =======================================================
-   SAVE EDITOR DATA TO LOCAL STORAGE
-   ======================================================= */
+     SAVE TO LOCAL STORAGE
+     ======================================================= */
 
   useEffect(() => {
     try {
-      const editorData = {
-        files,
-        activeFileId,
-      };
-
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(editorData));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          files,
+          activeFileId,
+        }),
+      );
     } catch (error) {
       console.error("Failed to save Code Editor data:", error);
     }
   }, [files, activeFileId]);
+
+    /* =======================================================
+     COLLABORATIVE CODE SYNC
+     ======================================================= */
+
+  useEffect(() => {
+    if (!socket || !roomId) {
+      return undefined;
+    }
+
+    /* -------------------------------------------------------
+       INITIAL CODE SYNC
+       ------------------------------------------------------- */
+
+    const handleCodeSync = ({
+      roomId: incomingRoomId,
+      files: incomingFiles,
+      activeFileId: incomingActiveFileId,
+      revision = 0,
+    } = {}) => {
+      if (
+        incomingRoomId !== roomId ||
+        !Array.isArray(incomingFiles) ||
+        incomingFiles.length === 0
+      ) {
+        return;
+      }
+
+      /*
+       * This update came from the server.
+       * Do not send it back as a local edit.
+       */
+      applyingRemoteCodeRef.current = true;
+
+      codeRevisionRef.current =
+        revision;
+
+      previousFilesRef.current =
+        incomingFiles;
+
+      setFiles(incomingFiles);
+
+      setActiveFileId(
+        (currentId) => {
+          if (
+            incomingActiveFileId &&
+            incomingFiles.some(
+              (file) =>
+                file.id ===
+                incomingActiveFileId
+            )
+          ) {
+            return incomingActiveFileId;
+          }
+
+          if (
+            incomingFiles.some(
+              (file) =>
+                file.id === currentId
+            )
+          ) {
+            return currentId;
+          }
+
+          return (
+            incomingFiles[0]?.id ||
+            DEFAULT_FILES[0].id
+          );
+        }
+      );
+
+      hasReceivedInitialSyncRef.current =
+        true;
+
+      localChangePendingRef.current =
+        false;
+
+      requestAnimationFrame(() => {
+        applyingRemoteCodeRef.current =
+          false;
+      });
+    };
+
+    /* -------------------------------------------------------
+       NO EXISTING ROOM STATE
+       ------------------------------------------------------- */
+
+    const handleCodeSyncEmpty = ({
+      roomId: incomingRoomId,
+    } = {}) => {
+      if (
+        incomingRoomId !== roomId
+      ) {
+        return;
+      }
+
+      /*
+       * This browser becomes the initial
+       * source of the room's code state.
+       */
+      hasReceivedInitialSyncRef.current =
+        true;
+
+      codeRevisionRef.current =
+        0;
+
+      previousFilesRef.current =
+        files;
+
+      localChangePendingRef.current =
+        true;
+
+      socket.emit("code-update", {
+        roomId,
+        files,
+        activeFileId,
+        baseRevision: 0,
+      });
+
+      console.log(
+        "[SyncSpace] Created initial collaborative code state."
+      );
+    };
+
+    /* -------------------------------------------------------
+       REMOTE CODE UPDATE
+       ------------------------------------------------------- */
+
+    const handleRemoteCodeUpdate = ({
+      socketId,
+      roomId: incomingRoomId,
+      files: incomingFiles,
+      activeFileId: incomingActiveFileId,
+      revision = 0,
+    } = {}) => {
+      if (
+        incomingRoomId !== roomId ||
+        !Array.isArray(incomingFiles)
+      ) {
+        return;
+      }
+
+      /*
+       * Ignore updates that are older than the
+       * state we already have.
+       */
+      if (
+        revision <
+        codeRevisionRef.current
+      ) {
+        return;
+      }
+
+      /*
+       * Mark this as a remote update.
+       */
+      applyingRemoteCodeRef.current =
+        true;
+
+      codeRevisionRef.current =
+        revision;
+
+      previousFilesRef.current =
+        incomingFiles;
+
+      localChangePendingRef.current =
+        false;
+
+      setFiles(incomingFiles);
+
+      setActiveFileId(
+        (currentId) => {
+          if (
+            incomingActiveFileId &&
+            incomingFiles.some(
+              (file) =>
+                file.id ===
+                incomingActiveFileId
+            )
+          ) {
+            return incomingActiveFileId;
+          }
+
+          if (
+            incomingFiles.some(
+              (file) =>
+                file.id === currentId
+            )
+          ) {
+            return currentId;
+          }
+
+          return (
+            incomingFiles[0]?.id ||
+            DEFAULT_FILES[0].id
+          );
+        }
+      );
+
+      requestAnimationFrame(() => {
+        applyingRemoteCodeRef.current =
+          false;
+      });
+
+      console.log(
+        `[SyncSpace] Remote code update received from ${socketId || "server"} ` +
+          `(revision ${revision})`
+      );
+    };
+
+    /* -------------------------------------------------------
+       SERVER ACKNOWLEDGEMENT
+       ------------------------------------------------------- */
+
+    const handleCodeUpdateAck = ({
+      roomId: incomingRoomId,
+      revision = 0,
+    } = {}) => {
+      if (
+        incomingRoomId !== roomId
+      ) {
+        return;
+      }
+
+      if (
+        revision >=
+        codeRevisionRef.current
+      ) {
+        codeRevisionRef.current =
+          revision;
+      }
+
+      localChangePendingRef.current =
+        false;
+
+      console.log(
+        `[SyncSpace] Code update accepted at revision ${revision}.`
+      );
+    };
+
+    /* -------------------------------------------------------
+       CONFLICT / STALE UPDATE
+       ------------------------------------------------------- */
+
+    const handleCodeConflict = ({
+      roomId: incomingRoomId,
+      files: incomingFiles,
+      activeFileId: incomingActiveFileId,
+      revision = 0,
+    } = {}) => {
+      if (
+        incomingRoomId !== roomId ||
+        !Array.isArray(incomingFiles)
+      ) {
+        return;
+      }
+
+      console.warn(
+        "[SyncSpace] Code conflict detected. " +
+          "Applying the latest server state."
+      );
+
+      applyingRemoteCodeRef.current =
+        true;
+
+      codeRevisionRef.current =
+        revision;
+
+      previousFilesRef.current =
+        incomingFiles;
+
+      localChangePendingRef.current =
+        false;
+
+      setFiles(incomingFiles);
+
+      setActiveFileId(
+        (currentId) => {
+          if (
+            incomingActiveFileId &&
+            incomingFiles.some(
+              (file) =>
+                file.id ===
+                incomingActiveFileId
+            )
+          ) {
+            return incomingActiveFileId;
+          }
+
+          if (
+            incomingFiles.some(
+              (file) =>
+                file.id === currentId
+            )
+          ) {
+            return currentId;
+          }
+
+          return (
+            incomingFiles[0]?.id ||
+            DEFAULT_FILES[0].id
+          );
+        }
+      );
+
+      requestAnimationFrame(() => {
+        applyingRemoteCodeRef.current =
+          false;
+      });
+    };
+
+    /* -------------------------------------------------------
+       REGISTER EVENTS
+       ------------------------------------------------------- */
+
+    socket.on(
+      "code-sync",
+      handleCodeSync
+    );
+
+    socket.on(
+      "code-sync-empty",
+      handleCodeSyncEmpty
+    );
+
+    socket.on(
+      "code-update",
+      handleRemoteCodeUpdate
+    );
+
+    socket.on(
+      "code-update-ack",
+      handleCodeUpdateAck
+    );
+
+    socket.on(
+      "code-conflict",
+      handleCodeConflict
+    );
+
+    /* -------------------------------------------------------
+       REQUEST CURRENT ROOM STATE
+       ------------------------------------------------------- */
+
+    if (socket.connected) {
+      socket.emit(
+        "code-sync-request",
+        roomId
+      );
+    }
+
+    const handleSocketConnect = () => {
+      /*
+       * Reset synchronization state after reconnect.
+       */
+      hasReceivedInitialSyncRef.current =
+        false;
+
+      localChangePendingRef.current =
+        false;
+
+      socket.emit(
+        "code-sync-request",
+        roomId
+      );
+    };
+
+    socket.on(
+      "connect",
+      handleSocketConnect
+    );
+
+    return () => {
+      socket.off(
+        "code-sync",
+        handleCodeSync
+      );
+
+      socket.off(
+        "code-sync-empty",
+        handleCodeSyncEmpty
+      );
+
+      socket.off(
+        "code-update",
+        handleRemoteCodeUpdate
+      );
+
+      socket.off(
+        "code-update-ack",
+        handleCodeUpdateAck
+      );
+
+      socket.off(
+        "code-conflict",
+        handleCodeConflict
+      );
+
+      socket.off(
+        "connect",
+        handleSocketConnect
+      );
+    };
+  }, [
+    socket,
+    roomId,
+    files,
+    activeFileId,
+  ]);
+
+    /* =======================================================
+     SEND LOCAL CODE CHANGES
+     ======================================================= */
+
+  useEffect(() => {
+    if (
+      !socket ||
+      !roomId ||
+      !socket.connected
+    ) {
+      return;
+    }
+
+    /*
+     * Never broadcast a state change that came
+     * from another user.
+     */
+    if (
+      applyingRemoteCodeRef.current
+    ) {
+      previousFilesRef.current =
+        files;
+
+      return;
+    }
+
+    /*
+     * First render / initial state.
+     */
+    if (
+      previousFilesRef.current ===
+      null
+    ) {
+      previousFilesRef.current =
+        files;
+
+      return;
+    }
+
+    /*
+     * Nothing actually changed.
+     */
+    if (
+      JSON.stringify(
+        previousFilesRef.current
+      ) ===
+      JSON.stringify(files)
+    ) {
+      return;
+    }
+
+    /*
+     * Mark this as a local change.
+     */
+    localChangePendingRef.current =
+      true;
+
+    socket.emit(
+      "code-update",
+      {
+        roomId,
+        files,
+        activeFileId,
+        baseRevision:
+          codeRevisionRef.current,
+      }
+    );
+
+    /*
+     * Remember exactly what we sent.
+     */
+    previousFilesRef.current =
+      files;
+  }, [
+    socket,
+    roomId,
+    files,
+    activeFileId,
+  ]);
+
   /* =======================================================
      UPDATE FILE CODE
      ======================================================= */
@@ -303,11 +920,11 @@ function CodeEditor() {
     const cursor = textarea.selectionStart;
 
     const textBeforeCursor = textarea.value.slice(0, cursor);
+
     const lines = textBeforeCursor.split("\n");
 
-    // Keep cursor coordinates 1-based:
-    // line 1 / column 1 means "before the first character".
     const line = lines.length;
+
     const column = lines[lines.length - 1].length + 1;
 
     setCursorPosition({
@@ -317,25 +934,92 @@ function CodeEditor() {
   }, []);
 
   /* =======================================================
-     SEND CURSOR / AWARENESS UPDATE
+     SEND AWARENESS
      ======================================================= */
 
   useEffect(() => {
-    if (!socketRef.current) {
+    if (!socket || !socket.connected || !roomId) {
       return;
     }
 
-    socketRef.current.emit("awareness-update", {
+    socket.emit("awareness-update", {
       roomId,
+
       awareness: {
         userId,
         userColor,
+
         line: cursorPosition.line,
+
         column: cursorPosition.column,
+
         fileId: activeFileId,
       },
     });
-  }, [cursorPosition, roomId, userId, userColor, activeFileId]);
+  }, [
+    socket,
+    roomId,
+    userId,
+    userColor,
+    cursorPosition.line,
+    cursorPosition.column,
+    activeFileId,
+  ]);
+
+  /* =======================================================
+     RECEIVE AWARENESS
+     ======================================================= */
+
+  useEffect(() => {
+    if (!socket) {
+      return undefined;
+    }
+
+    const handleAwarenessUpdate = ({ socketId, awareness } = {}) => {
+      if (!socketId || !awareness) {
+        return;
+      }
+
+      /*
+       * Ignore ourselves.
+       */
+
+      if (awareness.userId === userId) {
+        return;
+      }
+
+      setRemoteCursors((current) => ({
+        ...current,
+        [socketId]: awareness,
+      }));
+    };
+
+    const handleAwarenessRemove = ({ socketId } = {}) => {
+      if (!socketId) {
+        return;
+      }
+
+      setRemoteCursors((current) => {
+        const updated = {
+          ...current,
+        };
+
+        delete updated[socketId];
+
+        return updated;
+      });
+    };
+
+    socket.on("awareness-update", handleAwarenessUpdate);
+
+    socket.on("awareness-remove", handleAwarenessRemove);
+
+    return () => {
+      socket.off("awareness-update", handleAwarenessUpdate);
+
+      socket.off("awareness-remove", handleAwarenessRemove);
+    };
+  }, [socket, userId]);
 
   /* =======================================================
      SAVE CURRENT FILE
@@ -356,17 +1040,99 @@ function CodeEditor() {
           : file,
       ),
     );
+
+    setOutput((current) => (current.length ? current : []));
   }, [activeFile, activeFileId]);
 
-  /* =======================================================
+    /* =======================================================
      SWITCH FILE
      ======================================================= */
 
-  const switchFile = useCallback(
-    (fileId) => {
+  const switchFile =
+    useCallback(
+      (fileId) => {
+        if (!fileId) {
+          return;
+        }
+
+        setActiveFileId(
+          fileId
+        );
+
+        setOutput([]);
+
+        /*
+         * Synchronize the selected tab
+         * with other users.
+         */
+        if (
+          socket &&
+          socket.connected &&
+          roomId
+        ) {
+          socket.emit(
+            "active-file-change",
+            {
+              roomId,
+              fileId,
+            }
+          );
+        }
+
+        requestAnimationFrame(
+          () => {
+            textareaRef.current?.focus();
+
+            if (
+              textareaRef.current
+            ) {
+              updateCursorPosition(
+                textareaRef.current
+              );
+            }
+          }
+        );
+      },
+      [
+        socket,
+        roomId,
+        updateCursorPosition,
+      ]
+    );
+
+  useEffect(() => {
+    if (!socket || !roomId) {
+      return;
+    }
+
+    const handleActiveFileChange = ({ socketId, fileId } = {}) => {
+      // Ignore our own event
+      if (socketId === socket.id) {
+        return;
+      }
+
+      if (!fileId) {
+        return;
+      }
+
+      // Make sure the file exists locally
+      setFiles((currentFiles) => {
+        const exists = currentFiles.some((file) => file.id === fileId);
+
+        if (!exists) {
+          return currentFiles;
+        }
+
+        return currentFiles;
+      });
+
+      // Change the active tab
       setActiveFileId(fileId);
+
+      // Clear output because we changed file
       setOutput([]);
 
+      // Focus editor after React updates
       requestAnimationFrame(() => {
         textareaRef.current?.focus();
 
@@ -374,351 +1140,93 @@ function CodeEditor() {
           updateCursorPosition(textareaRef.current);
         }
       });
-    },
-    [updateCursorPosition],
-  );
-
-  /* =======================================================
-   ACTUALLY CLOSE FILE
-   ======================================================= */
-
-  const performCloseFile = useCallback(
-    (fileId) => {
-      if (files.length === 1) {
-        return;
-      }
-
-      const fileIndex = files.findIndex((file) => file.id === fileId);
-
-      const remainingFiles = files.filter((file) => file.id !== fileId);
-
-      setFiles(remainingFiles);
-
-      /* -----------------------------------------------
-       If closing active file,
-       select another file
-       ----------------------------------------------- */
-
-      if (fileId === activeFileId) {
-        const nextIndex = Math.max(0, fileIndex - 1);
-
-        const nextFile = remainingFiles[nextIndex];
-
-        if (nextFile) {
-          setActiveFileId(nextFile.id);
-        }
-      }
-
-      /* Clear pending close state */
-
-      setFilePendingClose(null);
-      setShowUnsavedModal(false);
-    },
-    [files, activeFileId],
-  );
-
-  /* =======================================================
-   REQUEST CLOSE FILE
-   ======================================================= */
-
-  const closeFile = useCallback(
-    (event, fileId) => {
-      event.stopPropagation();
-
-      /* -----------------------------------------------
-       Keep at least one file open
-       ----------------------------------------------- */
-
-      if (files.length === 1) {
-        return;
-      }
-
-      const fileToClose = files.find((file) => file.id === fileId);
-
-      if (!fileToClose) {
-        return;
-      }
-
-      /* -----------------------------------------------
-       Check for unsaved changes
-       ----------------------------------------------- */
-
-      const hasUnsavedChanges = fileToClose.code !== fileToClose.savedCode;
-
-      if (hasUnsavedChanges) {
-        setFilePendingClose(fileId);
-        setShowUnsavedModal(true);
-        return;
-      }
-
-      /* -----------------------------------------------
-       No unsaved changes → close immediately
-       ----------------------------------------------- */
-
-      performCloseFile(fileId);
-    },
-    [files],
-  );
-
-  /* =======================================================
-   CANCEL CLOSE
-   ======================================================= */
-
-  const cancelCloseFile = useCallback(() => {
-    setFilePendingClose(null);
-    setShowUnsavedModal(false);
-  }, []);
-
-  /* =======================================================
-   CLOSE WITHOUT SAVING
-   ======================================================= */
-
-  const discardAndCloseFile = useCallback(() => {
-    if (!filePendingClose) {
-      return;
-    }
-
-    performCloseFile(filePendingClose);
-  }, [filePendingClose, performCloseFile]);
-
-  /* =======================================================
-   SAVE AND CLOSE
-   ======================================================= */
-
-  const saveAndCloseFile = useCallback(() => {
-    if (!filePendingClose) {
-      return;
-    }
-
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.id === filePendingClose
-          ? {
-              ...file,
-              savedCode: file.code,
-            }
-          : file,
-      ),
-    );
-
-    performCloseFile(filePendingClose);
-  }, [filePendingClose, performCloseFile]);
-
-  /* =======================================================
-   DUPLICATE CURRENT FILE
-   ======================================================= */
-
-  const duplicateCurrentFile = useCallback(() => {
-    if (!activeFile) {
-      return;
-    }
-
-    const baseName = activeFile.name.includes(".")
-      ? activeFile.name.substring(0, activeFile.name.lastIndexOf("."))
-      : activeFile.name;
-
-    const extension = activeFile.name.includes(".")
-      ? activeFile.name.substring(activeFile.name.lastIndexOf("."))
-      : "";
-
-    let duplicateName = `${baseName} copy${extension}`;
-
-    let counter = 2;
-
-    while (
-      files.some(
-        (file) => file.name.toLowerCase() === duplicateName.toLowerCase(),
-      )
-    ) {
-      duplicateName = `${baseName} copy ${counter}${extension}`;
-
-      counter += 1;
-    }
-
-    const duplicatedFile = {
-      ...activeFile,
-
-      id: `${duplicateName}-${Date.now()}`,
-
-      name: duplicateName,
     };
 
-    setFiles((currentFiles) => [...currentFiles, duplicatedFile]);
+    socket.on("active-file-change", handleActiveFileChange);
 
-    setActiveFileId(duplicatedFile.id);
-
-    setOutput([]);
-  }, [activeFile, files]);
-
-  /* =======================================================
-   REQUEST DELETE FILE
-   ======================================================= */
-
-  const requestDeleteCurrentFile = useCallback(() => {
-    if (!activeFile) {
-      return;
-    }
-
-    /* Keep at least one file */
-    if (files.length === 1) {
-      return;
-    }
-
-    setFilePendingDelete(activeFile.id);
-    setShowDeleteModal(true);
-  }, [activeFile, files.length]);
+    return () => {
+      socket.off("active-file-change", handleActiveFileChange);
+    };
+  }, [socket, roomId, updateCursorPosition]);
 
   /* =======================================================
-   CANCEL DELETE
+   RECEIVE REMOTE ACTIVE FILE
    ======================================================= */
 
-  const cancelDeleteFile = useCallback(() => {
-    setFilePendingDelete(null);
-    setShowDeleteModal(false);
-  }, []);
-
-  /* =======================================================
-   DELETE FILE
-   ======================================================= */
-
-  const deleteFile = useCallback(() => {
-    if (!filePendingDelete) {
-      return;
+  useEffect(() => {
+    if (!socket) {
+      return undefined;
     }
 
-    if (files.length === 1) {
-      return;
-    }
-
-    const fileIndex = files.findIndex((file) => file.id === filePendingDelete);
-
-    const remainingFiles = files.filter(
-      (file) => file.id !== filePendingDelete,
-    );
-
-    setFiles(remainingFiles);
-
-    if (filePendingDelete === activeFileId) {
-      const nextIndex = Math.max(0, fileIndex - 1);
-
-      const nextFile = remainingFiles[nextIndex];
-
-      if (nextFile) {
-        setActiveFileId(nextFile.id);
+    const handleRemoteActiveFileChange = ({
+      socketId,
+      roomId: incomingRoomId,
+      fileId,
+    } = {}) => {
+      // Ignore invalid messages
+      if (!fileId) {
+        return;
       }
-    }
 
-    setFilePendingDelete(null);
-    setShowDeleteModal(false);
-    setOutput([]);
-  }, [filePendingDelete, files, activeFileId]);
+      // Make sure the event belongs to this room
+      if (incomingRoomId && incomingRoomId !== roomId) {
+        return;
+      }
 
-  /* =======================================================
-     OPEN NEW FILE MODAL
-     ======================================================= */
+      // Ignore our own event
+      if (socketId && socketId === socket.id) {
+        return;
+      }
 
-  const openNewFileModal = useCallback(() => {
-    setNewFileName("");
-    setShowNewFileModal(true);
-  }, []);
+      // Make sure the file actually exists
+      setFiles((currentFiles) => {
+        const fileExists = currentFiles.some((file) => file.id === fileId);
 
-  /* =======================================================
-   OPEN RENAME MODAL
-   ======================================================= */
+        if (!fileExists) {
+          return currentFiles;
+        }
 
-  const openRenameModal = useCallback(() => {
-    if (!activeFile) {
-      return;
-    }
+        return currentFiles;
+      });
 
-    setRenameFileName(activeFile.name);
-    setShowRenameModal(true);
-  }, [activeFile]);
+      // Change the active tab
+      setActiveFileId(fileId);
 
-  /* =======================================================
-   CLOSE RENAME MODAL
-   ======================================================= */
+      // Clear output
+      setOutput([]);
 
-  const closeRenameModal = useCallback(() => {
-    setShowRenameModal(false);
-    setRenameFileName("");
-  }, []);
+      // Focus editor after tab changes
+      requestAnimationFrame(() => {
+        textareaRef.current?.focus();
 
-  /* =======================================================
-   RENAME CURRENT FILE
-   ======================================================= */
+        if (textareaRef.current) {
+          updateCursorPosition(textareaRef.current);
+        }
+      });
+    };
 
-  const renameCurrentFile = useCallback(() => {
-    if (!activeFile) {
-      return;
-    }
+    socket.on("active-file-change", handleRemoteActiveFileChange);
 
-    const trimmedName = renameFileName.trim();
-
-    if (!trimmedName) {
-      return;
-    }
-
-    /* -----------------------------------------------
-     Don't rename if the name hasn't changed
-     ----------------------------------------------- */
-
-    if (trimmedName === activeFile.name) {
-      closeRenameModal();
-      return;
-    }
-
-    /* -----------------------------------------------
-     Prevent duplicate file names
-     ----------------------------------------------- */
-
-    const alreadyExists = files.some(
-      (file) =>
-        file.id !== activeFile.id &&
-        file.name.toLowerCase() === trimmedName.toLowerCase(),
-    );
-
-    if (alreadyExists) {
-      return;
-    }
-
-    /* -----------------------------------------------
-     Detect new language
-     ----------------------------------------------- */
-
-    const newLanguage = getLanguageFromFileName(trimmedName);
-
-    /* -----------------------------------------------
-     Update file
-     ----------------------------------------------- */
-
-    setFiles((currentFiles) =>
-      currentFiles.map((file) =>
-        file.id === activeFile.id
-          ? {
-              ...file,
-              name: trimmedName,
-              language: newLanguage,
-            }
-          : file,
-      ),
-    );
-
-    closeRenameModal();
-  }, [activeFile, renameFileName, files, closeRenameModal]);
-
-  /* =======================================================
-     CLOSE NEW FILE MODAL
-     ======================================================= */
-
-  const closeNewFileModal = useCallback(() => {
-    setShowNewFileModal(false);
-    setNewFileName("");
-  }, []);
+    return () => {
+      socket.off("active-file-change", handleRemoteActiveFileChange);
+    };
+  }, [socket, roomId, updateCursorPosition]);
 
   /* =======================================================
      CREATE NEW FILE
      ======================================================= */
+
+  const openNewFileModal = useCallback(() => {
+    setNewFileName("");
+
+    setShowNewFileModal(true);
+  }, []);
+
+  const closeNewFileModal = useCallback(() => {
+    setShowNewFileModal(false);
+
+    setNewFileName("");
+  }, []);
 
   const createNewFile = useCallback(() => {
     const trimmedName = newFileName.trim();
@@ -727,7 +1235,6 @@ function CodeEditor() {
       return;
     }
 
-    /* Prevent duplicate file names */
     const alreadyExists = files.some(
       (file) => file.name.toLowerCase() === trimmedName.toLowerCase(),
     );
@@ -751,6 +1258,7 @@ function CodeEditor() {
     setActiveFileId(newFile.id);
 
     setNewFileName("");
+
     setShowNewFileModal(false);
 
     setOutput([]);
@@ -759,6 +1267,296 @@ function CodeEditor() {
       textareaRef.current?.focus();
     });
   }, [files, newFileName]);
+
+  /* =======================================================
+     RENAME FILE
+     ======================================================= */
+
+  const openRenameModal = useCallback(() => {
+    if (!activeFile) {
+      return;
+    }
+
+    setRenameFileName(activeFile.name);
+
+    setShowRenameModal(true);
+
+    setShowFileMenu(false);
+  }, [activeFile]);
+
+  const closeRenameModal = useCallback(() => {
+    setShowRenameModal(false);
+
+    setRenameFileName("");
+  }, []);
+
+  const renameCurrentFile = useCallback(() => {
+    if (!activeFile) {
+      return;
+    }
+
+    const trimmedName = renameFileName.trim();
+
+    if (!trimmedName) {
+      return;
+    }
+
+    if (trimmedName === activeFile.name) {
+      closeRenameModal();
+
+      return;
+    }
+
+    const duplicate = files.some(
+      (file) =>
+        file.id !== activeFile.id &&
+        file.name.toLowerCase() === trimmedName.toLowerCase(),
+    );
+
+    if (duplicate) {
+      return;
+    }
+
+    const language = getLanguageFromFileName(trimmedName);
+
+    setFiles((currentFiles) =>
+      currentFiles.map((file) =>
+        file.id === activeFile.id
+          ? {
+              ...file,
+              name: trimmedName,
+              language,
+            }
+          : file,
+      ),
+    );
+
+    closeRenameModal();
+  }, [activeFile, renameFileName, files, closeRenameModal]);
+
+  /* =======================================================
+     DUPLICATE FILE
+     ======================================================= */
+
+  const duplicateCurrentFile = useCallback(() => {
+    if (!activeFile) {
+      return;
+    }
+
+    const dotIndex = activeFile.name.lastIndexOf(".");
+
+    const baseName =
+      dotIndex > 0 ? activeFile.name.substring(0, dotIndex) : activeFile.name;
+
+    const extension = dotIndex > 0 ? activeFile.name.substring(dotIndex) : "";
+
+    let duplicateName = `${baseName} copy${extension}`;
+
+    let counter = 2;
+
+    while (
+      files.some(
+        (file) => file.name.toLowerCase() === duplicateName.toLowerCase(),
+      )
+    ) {
+      duplicateName = `${baseName} copy ${counter}${extension}`;
+
+      counter += 1;
+    }
+
+    const duplicatedFile = {
+      ...activeFile,
+      id: `${duplicateName}-${Date.now()}`,
+      name: duplicateName,
+      savedCode: activeFile.code,
+    };
+
+    setFiles((currentFiles) => [...currentFiles, duplicatedFile]);
+
+    setActiveFileId(duplicatedFile.id);
+
+    setOutput([]);
+
+    setShowFileMenu(false);
+  }, [activeFile, files]);
+
+  /* =======================================================
+     DELETE REQUEST
+     ======================================================= */
+
+  const requestDeleteCurrentFile = useCallback(() => {
+    if (!activeFile) {
+      return;
+    }
+
+    if (files.length === 1) {
+      return;
+    }
+
+    setFilePendingDelete(activeFile.id);
+
+    setShowDeleteModal(true);
+
+    setShowFileMenu(false);
+  }, [activeFile, files.length]);
+
+  /* =======================================================
+     CANCEL DELETE
+     ======================================================= */
+
+  const cancelDeleteFile = useCallback(() => {
+    setFilePendingDelete(null);
+
+    setShowDeleteModal(false);
+  }, []);
+
+  /* =======================================================
+     DELETE FILE
+     ======================================================= */
+
+  const deleteFile = useCallback(() => {
+    if (!filePendingDelete || files.length === 1) {
+      return;
+    }
+
+    const fileIndex = files.findIndex((file) => file.id === filePendingDelete);
+
+    const remainingFiles = files.filter(
+      (file) => file.id !== filePendingDelete,
+    );
+
+    setFiles(remainingFiles);
+
+    if (filePendingDelete === activeFileId) {
+      const nextIndex = Math.min(
+        Math.max(fileIndex - 1, 0),
+        remainingFiles.length - 1,
+      );
+
+      const nextFile = remainingFiles[nextIndex];
+
+      if (nextFile) {
+        setActiveFileId(nextFile.id);
+      }
+    }
+
+    setFilePendingDelete(null);
+
+    setShowDeleteModal(false);
+
+    setOutput([]);
+  }, [filePendingDelete, files, activeFileId]);
+
+  /* =======================================================
+     PERFORM CLOSE FILE
+     ======================================================= */
+
+  const performCloseFile = useCallback(
+    (fileId) => {
+      if (files.length === 1) {
+        return;
+      }
+
+      const fileIndex = files.findIndex((file) => file.id === fileId);
+
+      const remainingFiles = files.filter((file) => file.id !== fileId);
+
+      setFiles(remainingFiles);
+
+      if (fileId === activeFileId) {
+        const nextIndex = Math.max(0, fileIndex - 1);
+
+        const nextFile = remainingFiles[nextIndex];
+
+        if (nextFile) {
+          setActiveFileId(nextFile.id);
+        }
+      }
+
+      setFilePendingClose(null);
+
+      setShowUnsavedModal(false);
+    },
+    [files, activeFileId],
+  );
+
+  /* =======================================================
+     CLOSE FILE
+     ======================================================= */
+
+  const closeFile = useCallback(
+    (event, fileId) => {
+      event.stopPropagation();
+
+      if (files.length === 1) {
+        return;
+      }
+
+      const fileToClose = files.find((file) => file.id === fileId);
+
+      if (!fileToClose) {
+        return;
+      }
+
+      const hasUnsavedChanges = fileToClose.code !== fileToClose.savedCode;
+
+      if (hasUnsavedChanges) {
+        setFilePendingClose(fileId);
+
+        setShowUnsavedModal(true);
+
+        return;
+      }
+
+      performCloseFile(fileId);
+    },
+    [files, performCloseFile],
+  );
+
+  /* =======================================================
+     CANCEL CLOSE
+     ======================================================= */
+
+  const cancelCloseFile = useCallback(() => {
+    setFilePendingClose(null);
+
+    setShowUnsavedModal(false);
+  }, []);
+
+  /* =======================================================
+     DISCARD AND CLOSE
+     ======================================================= */
+
+  const discardAndCloseFile = useCallback(() => {
+    if (!filePendingClose) {
+      return;
+    }
+
+    performCloseFile(filePendingClose);
+  }, [filePendingClose, performCloseFile]);
+
+  /* =======================================================
+     SAVE AND CLOSE
+     ======================================================= */
+
+  const saveAndCloseFile = useCallback(() => {
+    if (!filePendingClose) {
+      return;
+    }
+
+    setFiles((currentFiles) =>
+      currentFiles.map((file) =>
+        file.id === filePendingClose
+          ? {
+              ...file,
+              savedCode: file.code,
+            }
+          : file,
+      ),
+    );
+
+    performCloseFile(filePendingClose);
+  }, [filePendingClose, performCloseFile]);
 
   /* =======================================================
      CODE CHANGE
@@ -785,8 +1583,8 @@ function CodeEditor() {
   );
 
   /* =======================================================
-   LINE NUMBER SCROLL SYNCHRONIZATION
-   ======================================================= */
+     EDITOR SCROLL
+     ======================================================= */
 
   const handleEditorScroll = useCallback((event) => {
     const textarea = event.currentTarget;
@@ -799,11 +1597,10 @@ function CodeEditor() {
 
     if (highlight) {
       highlight.scrollTop = textarea.scrollTop;
+
       highlight.scrollLeft = textarea.scrollLeft;
     }
 
-    // The remote cursor is an overlay, so it must use the same
-    // scroll offsets as the textarea.
     setEditorScroll({
       top: textarea.scrollTop,
       left: textarea.scrollLeft,
@@ -811,52 +1608,99 @@ function CodeEditor() {
   }, []);
 
   /* =======================================================
-   KEYBOARD HANDLING
-   ======================================================= */
+     MEASURE REMOTE CURSORS
+     ======================================================= */
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea || !activeFile) {
+      setRemoteCursorPositions({});
+      return undefined;
+    }
+
+    const styles = window.getComputedStyle(textarea);
+
+    const lineHeight =
+      parseFloat(styles.lineHeight) || parseFloat(styles.fontSize) || 14;
+
+    const paddingTop = parseFloat(styles.paddingTop) || 0;
+
+    const paddingLeft = parseFloat(styles.paddingLeft) || 0;
+
+    const canvas = document.createElement("canvas");
+
+    const context = canvas.getContext("2d");
+
+    if (context) {
+      context.font = [
+        styles.fontStyle,
+        styles.fontVariant,
+        styles.fontWeight,
+        styles.fontSize,
+        styles.fontFamily,
+      ].join(" ");
+    }
+
+    const codeLines = activeFile.code.split("\n");
+
+    const positions = {};
+
+    Object.entries(remoteCursors).forEach(([socketId, awareness]) => {
+      if (!awareness || awareness.fileId !== activeFileId) {
+        return;
+      }
+
+      const line = Math.max(1, Number(awareness.line) || 1);
+
+      const column = Math.max(1, Number(awareness.column) || 1);
+
+      const currentLine = codeLines[line - 1] || "";
+
+      const characterOffset = Math.min(
+        Math.max(0, column - 1),
+        currentLine.length,
+      );
+
+      const textBeforeCursor = currentLine.slice(0, characterOffset);
+
+      let textWidth = 0;
+
+      if (context) {
+        textWidth = context.measureText(textBeforeCursor).width;
+      }
+
+      positions[socketId] = {
+        top: paddingTop + (line - 1) * lineHeight - editorScroll.top,
+
+        left: paddingLeft + textWidth - editorScroll.left,
+
+        userId: awareness.userId || "User",
+
+        userColor: awareness.userColor || "#ff4d4d",
+      };
+    });
+
+    setRemoteCursorPositions(positions);
+
+    return undefined;
+  }, [remoteCursors, activeFile, activeFileId, editorScroll]);
+
+  /* =======================================================
+     KEYBOARD HANDLING
+     ======================================================= */
 
   const handleEditorKeyDown = useCallback(
     (event) => {
       const textarea = event.currentTarget;
 
-      /* ---------------------------------------------------
-       SKIP EXISTING CLOSING CHARACTER
-       --------------------------------------------------- */
-
-      const closingCharacters = {
-        ")": ")",
-        "]": "]",
-        "}": "}",
-        '"': '"',
-        "'": "'",
-        "`": "`",
-      };
-
-      if (
-        closingCharacters[event.key] &&
-        textarea.selectionStart === textarea.selectionEnd
-      ) {
-        const cursorPosition = textarea.selectionStart;
-        const value = textarea.value;
-
-        const nextCharacter = value[cursorPosition];
-
-        if (nextCharacter === event.key) {
-          event.preventDefault();
-
-          const newPosition = cursorPosition + 1;
-
-          textarea.selectionStart = newPosition;
-          textarea.selectionEnd = newPosition;
-
-          updateCursorPosition(textarea);
-
-          return;
-        }
+      if (!activeFile) {
+        return;
       }
 
-      /* ---------------------------------------------------
-       CTRL + S / CMD + S
-       --------------------------------------------------- */
+      /* =================================================
+           SAVE
+           ================================================= */
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
@@ -866,502 +1710,58 @@ function CodeEditor() {
         return;
       }
 
-      /* ---------------------------------------------------
-   CTRL + / → TOGGLE COMMENT
-   --------------------------------------------------- */
-
-      if ((event.ctrlKey || event.metaKey) && event.key === "/") {
-        event.preventDefault();
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-
-        const value = textarea.value;
-
-        /* -----------------------------------------------
-     Detect language
-     ----------------------------------------------- */
-
-        const language = activeFile?.language?.toLowerCase() || "javascript";
-
-        let commentPrefix = "//";
-        let commentSuffix = "";
-
-        if (language === "python" || language === "py") {
-          commentPrefix = "#";
-        }
-
-        if (language === "html" || language === "xml") {
-          commentPrefix = "<!--";
-          commentSuffix = "-->";
-        }
-
-        /* -----------------------------------------------
-     Find selected line boundaries
-     ----------------------------------------------- */
-
-        const selectionStart = value.lastIndexOf("\n", start - 1) + 1;
-
-        const selectionEndIndex = value.indexOf("\n", end);
-
-        const selectionEnd =
-          selectionEndIndex === -1 ? value.length : selectionEndIndex;
-
-        const selectedText = value.slice(selectionStart, selectionEnd);
-
-        const lines = selectedText.split("\n");
-
-        /* -----------------------------------------------
-     HTML / XML comments
-     ----------------------------------------------- */
-
-        if (commentSuffix) {
-          const trimmedLines = lines.map((line) => line.trim());
-
-          const allCommented = trimmedLines.every(
-            (line) =>
-              line.startsWith(commentPrefix) && line.endsWith(commentSuffix),
-          );
-
-          let updatedLines;
-
-          if (allCommented) {
-            updatedLines = lines.map((line) => {
-              const leadingWhitespace = line.match(/^\s*/)?.[0] || "";
-
-              const trimmed = line.trim();
-
-              const uncommented = trimmed
-                .slice(
-                  commentPrefix.length,
-                  trimmed.length - commentSuffix.length,
-                )
-                .trim();
-
-              return leadingWhitespace + uncommented;
-            });
-          } else {
-            updatedLines = lines.map((line) => {
-              const leadingWhitespace = line.match(/^\s*/)?.[0] || "";
-
-              const content = line.trim();
-
-              if (!content) {
-                return line;
-              }
-
-              return (
-                leadingWhitespace +
-                commentPrefix +
-                " " +
-                content +
-                " " +
-                commentSuffix
-              );
-            });
-          }
-
-          const newSelectedText = updatedLines.join("\n");
-
-          const newValue =
-            value.substring(0, selectionStart) +
-            newSelectedText +
-            value.substring(selectionEnd);
-
-          updateFileCode(newValue);
-
-          requestAnimationFrame(() => {
-            if (!textareaRef.current) {
-              return;
-            }
-
-            textareaRef.current.selectionStart = selectionStart;
-
-            textareaRef.current.selectionEnd =
-              selectionStart + newSelectedText.length;
-
-            updateCursorPosition(textareaRef.current);
-          });
-
-          return;
-        }
-
-        /* -----------------------------------------------
-     JavaScript / CSS / Python comments
-     ----------------------------------------------- */
-
-        const commentPattern = new RegExp(
-          `^(\\s*)${commentPrefix.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&",
-          )}(?:\\s)?`,
-        );
-
-        const nonEmptyLines = lines.filter((line) => line.trim() !== "");
-
-        const allCommented =
-          nonEmptyLines.length > 0 &&
-          nonEmptyLines.every((line) => commentPattern.test(line));
-
-        let updatedLines;
-
-        /* -----------------------------------------------
-     Uncomment
-     ----------------------------------------------- */
-
-        if (allCommented) {
-          updatedLines = lines.map((line) =>
-            line.replace(commentPattern, "$1"),
-          );
-        } else {
-          /* -----------------------------------------------
-     Comment
-     ----------------------------------------------- */
-          updatedLines = lines.map((line) => {
-            const leadingWhitespace = line.match(/^\s*/)?.[0] || "";
-
-            const content = line.slice(leadingWhitespace.length);
-
-            if (!content.trim()) {
-              return line;
-            }
-
-            return leadingWhitespace + commentPrefix + " " + content;
-          });
-        }
-
-        const newSelectedText = updatedLines.join("\n");
-
-        const newValue =
-          value.substring(0, selectionStart) +
-          newSelectedText +
-          value.substring(selectionEnd);
-
-        updateFileCode(newValue);
-
-        /* -----------------------------------------------
-     Preserve selection
-     ----------------------------------------------- */
-
-        requestAnimationFrame(() => {
-          if (!textareaRef.current) {
-            return;
-          }
-
-          textareaRef.current.selectionStart = selectionStart;
-
-          textareaRef.current.selectionEnd =
-            selectionStart + newSelectedText.length;
-
-          updateCursorPosition(textareaRef.current);
-        });
-
-        return;
-      }
-
-      /* ---------------------------------------------------
-       SMART BACKSPACE FOR PAIRS
-       --------------------------------------------------- */
-
-      if (
-        event.key === "Backspace" &&
-        textarea.selectionStart === textarea.selectionEnd
-      ) {
-        const cursorPosition = textarea.selectionStart;
-
-        if (cursorPosition > 0) {
-          const value = textarea.value;
-
-          const previousCharacter = value[cursorPosition - 1];
-          const nextCharacter = value[cursorPosition];
-
-          const pairedCharacters = {
-            "(": ")",
-            "[": "]",
-            "{": "}",
-            '"': '"',
-            "'": "'",
-            "`": "`",
-          };
-
-          if (pairedCharacters[previousCharacter] === nextCharacter) {
-            event.preventDefault();
-
-            const newValue =
-              value.substring(0, cursorPosition - 1) +
-              value.substring(cursorPosition + 1);
-
-            updateFileCode(newValue);
-
-            requestAnimationFrame(() => {
-              if (!textareaRef.current) {
-                return;
-              }
-
-              const newPosition = cursorPosition - 1;
-
-              textareaRef.current.selectionStart = newPosition;
-              textareaRef.current.selectionEnd = newPosition;
-
-              updateCursorPosition(textareaRef.current);
-            });
-
-            return;
-          }
-        }
-      }
-      /* ---------------------------------------------------
-       SMART BRACKETS & QUOTES
-       --------------------------------------------------- */
-
-      const pairedCharacters = {
-        "(": ")",
-        "[": "]",
-        "{": "}",
-        '"': '"',
-        "'": "'",
-        "`": "`",
-      };
-
-      if (Object.prototype.hasOwnProperty.call(pairedCharacters, event.key)) {
-        event.preventDefault();
-
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-
-        const value = textarea.value;
-
-        const closingCharacter = pairedCharacters[event.key];
-
-        const selectedText = value.substring(start, end);
-
-        /* -----------------------------------------------
-         If selected text exists, wrap it
-         ----------------------------------------------- */
-
-        if (start !== end) {
-          const newValue =
-            value.substring(0, start) +
-            event.key +
-            selectedText +
-            closingCharacter +
-            value.substring(end);
-
-          updateFileCode(newValue);
-
-          requestAnimationFrame(() => {
-            if (!textareaRef.current) {
-              return;
-            }
-
-            textareaRef.current.selectionStart = start + 1;
-            textareaRef.current.selectionEnd = end + 1;
-
-            updateCursorPosition(textareaRef.current);
-          });
-
-          return;
-        }
-
-        /* -----------------------------------------------
-         If cursor is already before the closing
-         character, don't create another pair
-         ----------------------------------------------- */
-
-        if (value[start] === closingCharacter) {
-          textarea.selectionStart = start + 1;
-          textarea.selectionEnd = start + 1;
-
-          updateCursorPosition(textarea);
-
-          return;
-        }
-
-        /* -----------------------------------------------
-         Normal pair insertion
-         ----------------------------------------------- */
-
-        const newValue =
-          value.substring(0, start) +
-          event.key +
-          closingCharacter +
-          value.substring(end);
-
-        updateFileCode(newValue);
-
-        requestAnimationFrame(() => {
-          if (!textareaRef.current) {
-            return;
-          }
-
-          const newPosition = start + 1;
-
-          textareaRef.current.selectionStart = newPosition;
-          textareaRef.current.selectionEnd = newPosition;
-
-          updateCursorPosition(textareaRef.current);
-        });
-
-        return;
-      }
-
-      /* ---------------------------------------------------
-   TAB / SHIFT + TAB
-   --------------------------------------------------- */
+      /* =================================================
+           TAB
+           ================================================= */
 
       if (event.key === "Tab") {
         event.preventDefault();
 
         const start = textarea.selectionStart;
+
         const end = textarea.selectionEnd;
 
         const value = textarea.value;
 
         const indentation = "  ";
 
-        /* =================================================
-     SHIFT + TAB
-     REMOVE INDENTATION
-     ================================================= */
+        /*
+         * SHIFT + TAB
+         */
 
         if (event.shiftKey) {
-          /* -----------------------------------------------
-       If text is selected, process all selected lines
-       ----------------------------------------------- */
-
-          if (start !== end) {
-            const selectionStart = value.lastIndexOf("\n", start - 1) + 1;
-
-            const selectionEndIndex = value.indexOf("\n", end);
-
-            const selectionEnd =
-              selectionEndIndex === -1 ? value.length : selectionEndIndex;
-
-            const selectedText = value.slice(selectionStart, selectionEnd);
-
-            const lines = selectedText.split("\n");
-
-            let removedCharacters = 0;
-
-            const updatedLines = lines.map((line) => {
-              if (line.startsWith("  ")) {
-                removedCharacters += 2;
-                return line.slice(2);
-              }
-
-              if (line.startsWith(" ")) {
-                removedCharacters += 1;
-                return line.slice(1);
-              }
-
-              return line;
-            });
-
-            const newSelectedText = updatedLines.join("\n");
-
-            const newValue =
-              value.substring(0, selectionStart) +
-              newSelectedText +
-              value.substring(selectionEnd);
-
-            updateFileCode(newValue);
-
-            requestAnimationFrame(() => {
-              if (!textareaRef.current) {
-                return;
-              }
-
-              const newSelectionStart = Math.max(selectionStart, start - 2);
-
-              const newSelectionEnd = Math.max(
-                newSelectionStart,
-                end - removedCharacters,
-              );
-
-              textareaRef.current.selectionStart = newSelectionStart;
-
-              textareaRef.current.selectionEnd = newSelectionEnd;
-
-              updateCursorPosition(textareaRef.current);
-            });
-
-            return;
-          }
-
-          /* -----------------------------------------------
-       No selection → remove indentation from
-       current line
-       ----------------------------------------------- */
-
           const lineStart = value.lastIndexOf("\n", start - 1) + 1;
 
-          const lineText = value.slice(
-            lineStart,
-            Math.min(lineStart + 2, value.length),
-          );
+          const lineEndIndex = value.indexOf("\n", end);
 
-          let removeCount = 0;
+          const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
 
-          if (lineText.startsWith("  ")) {
-            removeCount = 2;
-          } else if (lineText.startsWith(" ")) {
-            removeCount = 1;
-          }
-
-          if (removeCount > 0) {
-            const newValue =
-              value.substring(0, lineStart) +
-              value.substring(lineStart + removeCount);
-
-            updateFileCode(newValue);
-
-            requestAnimationFrame(() => {
-              if (!textareaRef.current) {
-                return;
-              }
-
-              const newPosition = Math.max(lineStart, start - removeCount);
-
-              textareaRef.current.selectionStart = newPosition;
-
-              textareaRef.current.selectionEnd = newPosition;
-
-              updateCursorPosition(textareaRef.current);
-            });
-          }
-
-          return;
-        }
-
-        /* =================================================
-     TAB
-     INSERT INDENTATION
-     ================================================= */
-
-        /* -----------------------------------------------
-     If text is selected, indent all selected lines
-     ----------------------------------------------- */
-
-        if (start !== end) {
-          const selectionStart = value.lastIndexOf("\n", start - 1) + 1;
-
-          const selectionEndIndex = value.indexOf("\n", end);
-
-          const selectionEnd =
-            selectionEndIndex === -1 ? value.length : selectionEndIndex;
-
-          const selectedText = value.slice(selectionStart, selectionEnd);
+          const selectedText = value.slice(lineStart, lineEnd);
 
           const lines = selectedText.split("\n");
 
-          const updatedLines = lines.map((line) => indentation + line);
+          let removedCharacters = 0;
 
-          const newSelectedText = updatedLines.join("\n");
+          const updatedLines = lines.map((line) => {
+            if (line.startsWith("  ")) {
+              removedCharacters += 2;
+
+              return line.slice(2);
+            }
+
+            if (line.startsWith(" ")) {
+              removedCharacters += 1;
+
+              return line.slice(1);
+            }
+
+            return line;
+          });
 
           const newValue =
-            value.substring(0, selectionStart) +
-            newSelectedText +
-            value.substring(selectionEnd);
+            value.substring(0, lineStart) +
+            updatedLines.join("\n") +
+            value.substring(lineEnd);
 
           updateFileCode(newValue);
 
@@ -1370,11 +1770,15 @@ function CodeEditor() {
               return;
             }
 
-            const addedCharacters = lines.length * indentation.length;
+            textareaRef.current.selectionStart = Math.max(
+              lineStart,
+              start - removedCharacters,
+            );
 
-            textareaRef.current.selectionStart = start + indentation.length;
-
-            textareaRef.current.selectionEnd = end + addedCharacters;
+            textareaRef.current.selectionEnd = Math.max(
+              lineStart,
+              end - removedCharacters,
+            );
 
             updateCursorPosition(textareaRef.current);
           });
@@ -1382,9 +1786,9 @@ function CodeEditor() {
           return;
         }
 
-        /* -----------------------------------------------
-     No selection → normal Tab
-     ----------------------------------------------- */
+        /*
+         * Normal TAB
+         */
 
         const newValue =
           value.substring(0, start) + indentation + value.substring(end);
@@ -1408,52 +1812,28 @@ function CodeEditor() {
         return;
       }
 
-      /* ---------------------------------------------------
-       ENTER → SMART INDENTATION
-       --------------------------------------------------- */
+      /* =================================================
+           ENTER / AUTO INDENT
+           ================================================= */
 
       if (event.key === "Enter") {
         event.preventDefault();
 
         const start = textarea.selectionStart;
+
         const end = textarea.selectionEnd;
 
         const value = textarea.value;
 
-        /* -----------------------------------------------
-         Find current line
-         ----------------------------------------------- */
-
         const lineStart = value.lastIndexOf("\n", start - 1) + 1;
 
-        const lineEnd = value.indexOf("\n", start);
-
-        const currentLine = value.slice(
-          lineStart,
-          lineEnd === -1 ? value.length : lineEnd,
-        );
-
-        /* -----------------------------------------------
-         Current indentation
-         ----------------------------------------------- */
+        const currentLine = value.slice(lineStart, start);
 
         const currentIndent = currentLine.match(/^\s*/)?.[0] || "";
 
-        /* -----------------------------------------------
-         Text before cursor
-         ----------------------------------------------- */
-
         const textBeforeCursor = value.slice(lineStart, start);
 
-        /* -----------------------------------------------
-         Check for opening block
-         ----------------------------------------------- */
-
         const opensBlock = /[({[]\s*$/.test(textBeforeCursor);
-
-        /* -----------------------------------------------
-         Check next character
-         ----------------------------------------------- */
 
         const nextCharacter = value[end];
 
@@ -1462,19 +1842,11 @@ function CodeEditor() {
           nextCharacter === "]" ||
           nextCharacter === ")";
 
-        /* -----------------------------------------------
-         Calculate next indentation
-         ----------------------------------------------- */
-
         let nextIndent = currentIndent;
 
         if (opensBlock) {
           nextIndent += "  ";
         }
-
-        /* -----------------------------------------------
-         Reduce indentation before closing bracket
-         ----------------------------------------------- */
 
         if (
           closesBlock &&
@@ -1485,20 +1857,12 @@ function CodeEditor() {
           nextIndent = currentIndent.slice(0, -2);
         }
 
-        /* -----------------------------------------------
-         Insert new line
-         ----------------------------------------------- */
-
         const insertedText = "\n" + nextIndent;
 
         const newValue =
           value.substring(0, start) + insertedText + value.substring(end);
 
         updateFileCode(newValue);
-
-        /* -----------------------------------------------
-         Restore cursor
-         ----------------------------------------------- */
 
         requestAnimationFrame(() => {
           if (!textareaRef.current) {
@@ -1508,6 +1872,7 @@ function CodeEditor() {
           const newPosition = start + insertedText.length;
 
           textareaRef.current.selectionStart = newPosition;
+
           textareaRef.current.selectionEnd = newPosition;
 
           updateCursorPosition(textareaRef.current);
@@ -1515,8 +1880,217 @@ function CodeEditor() {
 
         return;
       }
+
+      /* =================================================
+           AUTO CLOSE BRACKETS / QUOTES
+           ================================================= */
+
+      const closingCharacters = {
+        "(": ")",
+        "[": "]",
+        "{": "}",
+        '"': '"',
+        "'": "'",
+        "`": "`",
+      };
+
+      if (closingCharacters[event.key]) {
+        const closingCharacter = closingCharacters[event.key];
+
+        const start = textarea.selectionStart;
+
+        const end = textarea.selectionEnd;
+
+        const value = textarea.value;
+
+        /*
+         * If the next character is
+         * already the closing character,
+         * skip it.
+         */
+
+        if (start === end && value[start] === closingCharacter) {
+          event.preventDefault();
+
+          textarea.selectionStart = start + 1;
+
+          textarea.selectionEnd = start + 1;
+
+          updateCursorPosition(textarea);
+
+          return;
+        }
+
+        /*
+         * Selection wrapping.
+         */
+
+        if (start !== end) {
+          event.preventDefault();
+
+          const selectedText = value.slice(start, end);
+
+          const newValue =
+            value.substring(0, start) +
+            event.key +
+            selectedText +
+            closingCharacter +
+            value.substring(end);
+
+          updateFileCode(newValue);
+
+          requestAnimationFrame(() => {
+            if (!textareaRef.current) {
+              return;
+            }
+
+            textareaRef.current.selectionStart = start + 1;
+
+            textareaRef.current.selectionEnd = end + 1;
+
+            updateCursorPosition(textareaRef.current);
+          });
+
+          return;
+        }
+
+        /*
+         * Insert pair.
+         */
+
+        event.preventDefault();
+
+        const newValue =
+          value.substring(0, start) +
+          event.key +
+          closingCharacter +
+          value.substring(end);
+
+        updateFileCode(newValue);
+
+        requestAnimationFrame(() => {
+          if (!textareaRef.current) {
+            return;
+          }
+
+          textareaRef.current.selectionStart = start + 1;
+
+          textareaRef.current.selectionEnd = start + 1;
+
+          updateCursorPosition(textareaRef.current);
+        });
+
+        return;
+      }
+
+      /* =================================================
+           CTRL + /
+           ================================================= */
+
+      if ((event.ctrlKey || event.metaKey) && event.key === "/") {
+        event.preventDefault();
+
+        const start = textarea.selectionStart;
+
+        const end = textarea.selectionEnd;
+
+        const value = textarea.value;
+
+        const language = activeFile.language.toLowerCase();
+
+        let commentPrefix = "//";
+
+        let commentSuffix = "";
+
+        if (language === "python") {
+          commentPrefix = "#";
+        }
+
+        if (language === "html") {
+          commentPrefix = "<!--";
+
+          commentSuffix = "-->";
+        }
+
+        const selectionStart = value.lastIndexOf("\n", start - 1) + 1;
+
+        const selectionEndIndex = value.indexOf("\n", end);
+
+        const selectionEnd =
+          selectionEndIndex === -1 ? value.length : selectionEndIndex;
+
+        const selectedText = value.slice(selectionStart, selectionEnd);
+
+        const lines = selectedText.split("\n");
+
+        const allCommented = lines
+          .filter((line) => line.trim().length)
+          .every((line) => line.trim().startsWith(commentPrefix));
+
+        let updatedLines;
+
+        if (allCommented) {
+          updatedLines = lines.map((line) => {
+            const leading = line.match(/^\s*/)?.[0] || "";
+
+            const trimmed = line.trim();
+
+            if (commentSuffix) {
+              const withoutPrefix = trimmed.slice(commentPrefix.length);
+
+              const withoutSuffix = withoutPrefix.endsWith(commentSuffix)
+                ? withoutPrefix.slice(0, -commentSuffix.length)
+                : withoutPrefix;
+
+              return leading + withoutSuffix.trim();
+            }
+
+            return leading + trimmed.slice(commentPrefix.length).trim();
+          });
+        } else {
+          updatedLines = lines.map((line) => {
+            const leading = line.match(/^\s*/)?.[0] || "";
+
+            const content = line.trim();
+
+            if (!content) {
+              return line;
+            }
+
+            if (commentSuffix) {
+              return (
+                leading + commentPrefix + " " + content + " " + commentSuffix
+              );
+            }
+
+            return leading + commentPrefix + " " + content;
+          });
+        }
+
+        const newSelectedText = updatedLines.join("\n");
+
+        const newValue =
+          value.substring(0, selectionStart) +
+          newSelectedText +
+          value.substring(selectionEnd);
+
+        updateFileCode(newValue);
+
+        requestAnimationFrame(() => {
+          if (!textareaRef.current) {
+            return;
+          }
+
+          textareaRef.current.selectionStart = selectionStart;
+
+          textareaRef.current.selectionEnd =
+            selectionStart + newSelectedText.length;
+
+          updateCursorPosition(textareaRef.current);
+        });
+      }
     },
-    [saveCurrentFile, updateFileCode, updateCursorPosition],
+    [activeFile, saveCurrentFile, updateFileCode, updateCursorPosition],
   );
 
   /* =======================================================
@@ -1524,11 +2098,15 @@ function CodeEditor() {
      ======================================================= */
 
   const runJavaScript = useCallback(() => {
+    if (!activeFile) {
+      return;
+    }
+
+    const logs = [];
+
+    const originalConsoleLog = console.log;
+
     try {
-      const logs = [];
-
-      const originalConsoleLog = console.log;
-
       console.log = (...args) => {
         const formatted = args
           .map((value) => {
@@ -1549,18 +2127,18 @@ function CodeEditor() {
         originalConsoleLog(...args);
       };
 
-      try {
-        const execute = new Function(activeFile.code);
+      const execute = new Function(activeFile.code);
 
-        execute();
-      } finally {
-        console.log = originalConsoleLog;
-      }
-
-      setOutput(logs.length ? logs : ["Code executed successfully."]);
+      execute();
     } catch (error) {
       setOutput([`Error: ${error.message}`]);
+
+      return;
+    } finally {
+      console.log = originalConsoleLog;
     }
+
+    setOutput(logs.length ? logs : ["Code executed successfully."]);
   }, [activeFile]);
 
   /* =======================================================
@@ -1574,13 +2152,12 @@ function CodeEditor() {
 
     setOutput([]);
 
-    /* JavaScript */
     if (activeFile.language === "JavaScript") {
       runJavaScript();
+
       return;
     }
 
-    /* Python */
     if (activeFile.language === "Python") {
       setOutput([
         "Python execution is not connected yet.",
@@ -1591,21 +2168,18 @@ function CodeEditor() {
       return;
     }
 
-    /* HTML */
     if (activeFile.language === "HTML") {
       setOutput(["HTML preview will be added in a later sequence."]);
 
       return;
     }
 
-    /* CSS */
     if (activeFile.language === "CSS") {
       setOutput(["CSS preview will be added in a later sequence."]);
 
       return;
     }
 
-    /* JSON */
     if (activeFile.language === "JSON") {
       try {
         JSON.parse(activeFile.code);
@@ -1618,7 +2192,6 @@ function CodeEditor() {
       return;
     }
 
-    /* Other languages */
     setOutput([`${activeFile.language} execution is not connected yet.`]);
   }, [activeFile, runJavaScript]);
 
@@ -1631,65 +2204,7 @@ function CodeEditor() {
   }, []);
 
   /* =======================================================
-   TASK 2: AWARENESS / CURSOR SYNCHRONIZATION
-   ======================================================= */
-  useEffect(() => {
-    const socket = io("http://localhost:5000");
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      console.log("Connected to SyncSpace:", socket.id);
-
-      socket.emit("join-room", roomId);
-
-      // Send initial cursor position
-      socket.emit("awareness-update", {
-        roomId,
-        awareness: {
-          userId,
-          userColor,
-          line: cursorPosition.line,
-          column: cursorPosition.column,
-          fileId: activeFileId,
-        },
-      });
-    });
-
-    socket.on("awareness-update", ({ socketId, awareness }) => {
-      console.log("Remote cursor received:", socketId, awareness);
-
-      setRemoteCursors((current) => ({
-        ...current,
-        [socketId]: awareness,
-      }));
-    });
-
-    socket.on("awareness-remove", ({ socketId }) => {
-      setRemoteCursors((current) => {
-        const updated = { ...current };
-        delete updated[socketId];
-        return updated;
-      });
-    });
-
-    return () => {
-      socket.emit("awareness-remove", { roomId });
-      socket.emit("leave-room", roomId);
-      socket.disconnect();
-      socketRef.current = null;
-    };
-  }, [
-    roomId,
-    userId,
-    userColor,
-    cursorPosition.line,
-    cursorPosition.column,
-    activeFileId,
-  ]);
-
-  /* =======================================================
-     GLOBAL CTRL + S
+     GLOBAL SAVE
      ======================================================= */
 
   useEffect(() => {
@@ -1709,13 +2224,33 @@ function CodeEditor() {
   }, [saveCurrentFile]);
 
   /* =======================================================
-     ESCAPE → CLOSE MODAL
+     ESCAPE
      ======================================================= */
 
   useEffect(() => {
     const handleEscape = (event) => {
-      if (event.key === "Escape" && showNewFileModal) {
+      if (event.key !== "Escape") {
+        return;
+      }
+
+      if (showNewFileModal) {
         closeNewFileModal();
+      }
+
+      if (showRenameModal) {
+        closeRenameModal();
+      }
+
+      if (showUnsavedModal) {
+        cancelCloseFile();
+      }
+
+      if (showDeleteModal) {
+        cancelDeleteFile();
+      }
+
+      if (showFileMenu) {
+        setShowFileMenu(false);
       }
     };
 
@@ -1724,7 +2259,17 @@ function CodeEditor() {
     return () => {
       window.removeEventListener("keydown", handleEscape);
     };
-  }, [showNewFileModal, closeNewFileModal]);
+  }, [
+    showNewFileModal,
+    showRenameModal,
+    showUnsavedModal,
+    showDeleteModal,
+    showFileMenu,
+    closeNewFileModal,
+    closeRenameModal,
+    cancelCloseFile,
+    cancelDeleteFile,
+  ]);
 
   /* =======================================================
      NO FILE SAFETY
@@ -1756,6 +2301,7 @@ function CodeEditor() {
 
           <div>
             <h2>Code Editor</h2>
+
             <p>Collaborative coding</p>
           </div>
         </div>
@@ -1780,22 +2326,22 @@ function CodeEditor() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowFileMenu(false);
                     openRenameModal();
                   }}
                 >
                   <span>✏</span>
+
                   <span>Rename</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => {
-                    setShowFileMenu(false);
                     duplicateCurrentFile();
                   }}
                 >
                   <span>⧉</span>
+
                   <span>Duplicate</span>
                 </button>
 
@@ -1803,11 +2349,11 @@ function CodeEditor() {
                   type="button"
                   className="danger"
                   onClick={() => {
-                    setShowFileMenu(false);
                     requestDeleteCurrentFile();
                   }}
                 >
                   <span>🗑</span>
+
                   <span>Delete</span>
                 </button>
               </div>
@@ -1860,8 +2406,6 @@ function CodeEditor() {
           );
         })}
 
-        {/* NEW FILE BUTTON */}
-
         <button
           type="button"
           className="new-tab-button"
@@ -1873,7 +2417,7 @@ function CodeEditor() {
       </div>
 
       {/* =================================================
-          EDITOR INFO BAR
+          INFO BAR
           ================================================= */}
 
       <div className="editor-info-bar">
@@ -1893,8 +2437,6 @@ function CodeEditor() {
           ================================================= */}
 
       <div className="code-area">
-        {/* LINE NUMBERS */}
-
         <div ref={lineNumbersRef} className="line-numbers">
           {lineNumbers.map((number) => (
             <div key={number} className="line-number">
@@ -1903,101 +2445,36 @@ function CodeEditor() {
           ))}
         </div>
 
-        {/* TEXT EDITOR */}
-
         <div className="editor-textarea-wrapper">
-          {/* Remote user cursors */}
-          {Object.entries(remoteCursors)
-            .filter(([, awareness]) => awareness.fileId === activeFileId)
-            .map(([socketId, awareness]) => {
-              const textarea = textareaRef.current;
+          {/* =================================================
+              REMOTE CURSORS
+              ================================================= */}
 
-              if (!textarea) {
-                return null;
-              }
+          {Object.entries(remoteCursorPositions).map(([socketId, cursor]) => (
+            <div
+              key={socketId}
+              className="remote-cursor-indicator"
+              style={{
+                top: `${cursor.top}px`,
+                left: `${cursor.left}px`,
+                borderLeft: `2px solid ${cursor.userColor || "#ff4d4d"}`,
+              }}
+            >
+              <span
+                className="remote-cursor-label"
+                style={{
+                  backgroundColor: cursor.userColor || "#ff4d4d",
+                }}
+              >
+                {cursor.userId || "User"}
+              </span>
+            </div>
+          ))}
 
-              const styles = window.getComputedStyle(textarea);
+          {/* =================================================
+              SYNTAX HIGHLIGHT
+              ================================================= */}
 
-              const lineHeight =
-                parseFloat(styles.lineHeight) ||
-                parseFloat(styles.fontSize) ||
-                14;
-
-              const paddingTop = parseFloat(styles.paddingTop) || 0;
-              const paddingLeft = parseFloat(styles.paddingLeft) || 0;
-
-              // Awareness positions are 1-based:
-              // line 1 / column 1 = before the first character.
-              const line = Math.max(1, Number(awareness.line) || 1);
-              const column = Math.max(1, Number(awareness.column) || 1);
-
-              const codeLines = activeFile.code.split("\n");
-              const currentLine = codeLines[line - 1] || "";
-
-              // Convert the 1-based cursor column into a character
-              // offset. For example:
-              // column 1 -> 0 characters before cursor
-              // column 2 -> 1 character before cursor
-              const characterOffset = Math.min(
-                Math.max(0, column - 1),
-                currentLine.length,
-              );
-
-              const textBeforeCursor = currentLine.slice(0, characterOffset);
-
-              // Use the exact font settings of the textarea instead of
-              // assuming that every character is a fixed number of pixels.
-              const canvas = document.createElement("canvas");
-              const context = canvas.getContext("2d");
-
-              let textWidth = 0;
-
-              if (context) {
-                context.font = [
-                  styles.fontStyle,
-                  styles.fontVariant,
-                  styles.fontWeight,
-                  styles.fontSize,
-                  styles.fontFamily,
-                ].join(" ");
-
-                textWidth = context.measureText(textBeforeCursor).width;
-              }
-
-              const top =
-                paddingTop +
-                (line - 1) * lineHeight -
-                editorScroll.top;
-
-              const left =
-                paddingLeft +
-                textWidth -
-                editorScroll.left;
-
-              return (
-                <div
-                  key={socketId}
-                  className="remote-cursor-indicator"
-                  style={{
-                    top: `${top}px`,
-                    left: `${left}px`,
-                    borderLeft: `2px solid ${
-                      awareness.userColor || "#ff4d4d"
-                    }`,
-                  }}
-                >
-                  <span
-                    className="remote-cursor-label"
-                    style={{
-                      backgroundColor:
-                        awareness.userColor || "#ff4d4d",
-                    }}
-                  >
-                    {awareness.userId || "User"}
-                  </span>
-                </div>
-              );
-            })}
           <pre
             className="code-highlight"
             aria-hidden="true"
@@ -2005,6 +2482,10 @@ function CodeEditor() {
               __html: highlightedCode,
             }}
           />
+
+          {/* =================================================
+              TEXTAREA
+              ================================================= */}
 
           <textarea
             ref={textareaRef}
@@ -2061,8 +2542,6 @@ function CodeEditor() {
             className="new-file-modal"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            {/* MODAL HEADER */}
-
             <div className="new-file-modal-header">
               <h3>Create New File</h3>
 
@@ -2070,13 +2549,10 @@ function CodeEditor() {
                 type="button"
                 className="new-file-modal-close"
                 onClick={closeNewFileModal}
-                aria-label="Close"
               >
                 ×
               </button>
             </div>
-
-            {/* MODAL BODY */}
 
             <div className="new-file-modal-body">
               <label htmlFor="new-file-name">File name</label>
@@ -2090,17 +2566,15 @@ function CodeEditor() {
                   if (event.key === "Enter") {
                     createNewFile();
                   }
-
-                  if (event.key === "Escape") {
-                    closeNewFileModal();
-                  }
                 }}
-                placeholder="e.g. app.py"
+                placeholder="example.js"
                 autoFocus
               />
-            </div>
 
-            {/* MODAL ACTIONS */}
+              <small>
+                The language will be detected from the file extension.
+              </small>
+            </div>
 
             <div className="new-file-modal-actions">
               <button
@@ -2125,8 +2599,8 @@ function CodeEditor() {
       )}
 
       {/* =================================================
-    RENAME FILE MODAL
-    ================================================= */}
+          RENAME MODAL
+          ================================================= */}
 
       {showRenameModal && (
         <div className="new-file-modal-overlay" onMouseDown={closeRenameModal}>
@@ -2134,8 +2608,6 @@ function CodeEditor() {
             className="new-file-modal"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            {/* MODAL HEADER */}
-
             <div className="new-file-modal-header">
               <h3>Rename File</h3>
 
@@ -2143,13 +2615,10 @@ function CodeEditor() {
                 type="button"
                 className="new-file-modal-close"
                 onClick={closeRenameModal}
-                aria-label="Close"
               >
                 ×
               </button>
             </div>
-
-            {/* MODAL BODY */}
 
             <div className="new-file-modal-body">
               <label htmlFor="rename-file-name">File name</label>
@@ -2163,21 +2632,14 @@ function CodeEditor() {
                   if (event.key === "Enter") {
                     renameCurrentFile();
                   }
-
-                  if (event.key === "Escape") {
-                    closeRenameModal();
-                  }
                 }}
                 autoFocus
-                spellCheck={false}
               />
 
               <small>
                 The language will be detected from the file extension.
               </small>
             </div>
-
-            {/* MODAL ACTIONS */}
 
             <div className="new-file-modal-actions">
               <button
@@ -2202,8 +2664,8 @@ function CodeEditor() {
       )}
 
       {/* =================================================
-    UNSAVED CHANGES MODAL
-    ================================================= */}
+          UNSAVED CHANGES MODAL
+          ================================================= */}
 
       {showUnsavedModal && (
         <div className="new-file-modal-overlay" onMouseDown={cancelCloseFile}>
@@ -2211,8 +2673,6 @@ function CodeEditor() {
             className="new-file-modal"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            {/* MODAL HEADER */}
-
             <div className="new-file-modal-header">
               <h3>Unsaved Changes</h3>
 
@@ -2220,21 +2680,16 @@ function CodeEditor() {
                 type="button"
                 className="new-file-modal-close"
                 onClick={cancelCloseFile}
-                aria-label="Close"
               >
                 ×
               </button>
             </div>
-
-            {/* MODAL BODY */}
 
             <div className="new-file-modal-body">
               <p>This file has unsaved changes.</p>
 
               <p>Do you want to save your changes before closing?</p>
             </div>
-
-            {/* MODAL ACTIONS */}
 
             <div className="new-file-modal-actions">
               <button
@@ -2266,8 +2721,8 @@ function CodeEditor() {
       )}
 
       {/* =================================================
-    DELETE FILE MODAL
-    ================================================= */}
+          DELETE MODAL
+          ================================================= */}
 
       {showDeleteModal && (
         <div className="new-file-modal-overlay" onMouseDown={cancelDeleteFile}>
@@ -2282,7 +2737,6 @@ function CodeEditor() {
                 type="button"
                 className="new-file-modal-close"
                 onClick={cancelDeleteFile}
-                aria-label="Close"
               >
                 ×
               </button>
@@ -2291,7 +2745,12 @@ function CodeEditor() {
             <div className="new-file-modal-body">
               <p>
                 Are you sure you want to delete
-                <strong> {activeFile?.name}</strong>?
+                <strong>
+                  {" "}
+                  {files.find((file) => file.id === filePendingDelete)?.name ||
+                    activeFile?.name}
+                </strong>
+                ?
               </p>
 
               <p>This action cannot be undone.</p>
@@ -2337,6 +2796,19 @@ function CodeEditor() {
       </div>
     </div>
   );
+}
+
+/* =========================================================
+   HTML ESCAPE
+   ========================================================= */
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 export default CodeEditor;

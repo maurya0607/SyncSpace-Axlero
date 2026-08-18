@@ -347,26 +347,18 @@
 
 .canvas-message {
   position: absolute;
-
   top: 50%;
   left: 50%;
-
   transform:
     translate(-50%, -50%);
-
   display: flex;
   flex-direction: column;
-
   align-items: center;
   justify-content: center;
-
   width: 300px;
-
   text-align: center;
-
-  pointer-events: none;
-
-  z-index: 2;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 .canvas-icon {
@@ -417,21 +409,16 @@
 
 .start-drawing-button {
   pointer-events: auto;
-
   padding: 10px 18px;
-
   border: none;
+  position: relative;
+  z-index: 11;
   border-radius: 7px;
-
   background: #111111;
-
   color: #ffffff;
-
   font-size: 13px;
   font-weight: 600;
-
   cursor: pointer;
-
   transition:
     background 0.15s ease,
     transform 0.15s ease;
@@ -697,3 +684,50 @@
 .whiteboard-canvas-container{background-color:#0f1013;background-image:linear-gradient(#1a1c21 1px,transparent 1px),linear-gradient(90deg,#1a1c21 1px,transparent 1px);background-size:24px 24px}
 .canvas-message{width:280px}.canvas-icon{width:42px;height:42px;background:#15171c;border-color:#2a2c33;color:#8b6cff;box-shadow:none}.canvas-message h3{color:#e1e2e6;font:600 15px "Space Grotesk",sans-serif}.canvas-message p{color:#666a75;font:10px/1.6 Inter,sans-serif}.start-drawing-button{background:#7c5cff;border-radius:7px;font-size:11px}.start-drawing-button:hover{background:#8b6cff}
 .zoom-controls{right:12px;bottom:12px;border-color:#2c2e35;background:#15171c;box-shadow:0 10px 25px rgba(0,0,0,.25)}.zoom-controls button{background:#15171c;color:#818590;border-color:#2a2c33}.zoom-controls button:hover{background:#1e2026;color:#fff}.zoom-controls .zoom-value{color:#8e919b}
+
+
+/* =========================================================
+   COLLABORATION STATUS
+   ========================================================= */
+
+.canvas-sync-status {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 5;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 6px 9px;
+
+  border: 1px solid #26262b;
+  border-radius: 999px;
+
+  background: rgba(18, 18, 20, 0.86);
+
+  color: #a7a7b0;
+
+  font: 500 11px/1.2 "JetBrains Mono",
+    monospace;
+
+  backdrop-filter: blur(8px);
+}
+
+.canvas-sync-status .status-dot {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #71717a;
+}
+
+.canvas-sync-status .status-dot.online {
+  background: #22d3b5;
+
+  box-shadow:
+    0 0 10px
+    rgba(34, 211, 181, 0.45);
+}
