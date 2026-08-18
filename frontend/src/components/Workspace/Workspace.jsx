@@ -1695,6 +1695,7 @@ function Whiteboard({
               type="button"
               className="start-drawing-button"
               onClick={() => {
+                setHasDrawing(true);
                 setTool("pen");
 
                 requestAnimationFrame(
