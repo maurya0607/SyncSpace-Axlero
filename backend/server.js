@@ -30,6 +30,12 @@ const io = new Server(server, {
   },
 });
 
+/* =========================================================
+   COLLABORATIVE CODE STATE
+   ========================================================= */
+
+const roomCodeState = new Map();
+
 app.get("/", (req, res) => {
   res.send("SyncSpace Backend is running");
 });
@@ -136,6 +142,56 @@ io.on("connection", (socket) => {
     console.log(`Awareness removed for ${socket.id} from room: ${roomId}`);
   });
 
+    // ===========================
+  // Collaborative Code Sync
+  // ===========================
+
+  socket.on("code-sync-request", (roomId) => {
+    const currentState =
+      roomCodeState.get(roomId);
+
+    if (currentState) {
+      socket.emit("code-sync", {
+        roomId,
+        files: currentState.files,
+      });
+
+      console.log(
+        `Code state sent to ${socket.id} for room: ${roomId}`
+      );
+    } else {
+      socket.emit("code-sync-empty", {
+        roomId,
+      });
+
+      console.log(
+        `No code state exists yet for room: ${roomId}`
+      );
+    }
+  });
+
+  socket.on(
+    "code-update",
+    ({ roomId, files } = {}) => {
+      if (!roomId || !Array.isArray(files)) {
+        return;
+      }
+
+      roomCodeState.set(roomId, {
+        files,
+      });
+
+      socket.to(roomId).emit(
+        "code-update",
+        {
+          socketId: socket.id,
+          roomId,
+          files,
+        }
+      );
+    }
+  );
+
   // ===========================
   // Disconnect
   // ===========================
@@ -162,8 +218,14 @@ io.on("connection", (socket) => {
   });
 });
 
+// ===========================
+// SERVER START
+// ===========================
+
 const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, () => {
-  console.log(`SyncSpace server running on port http://localhost:${PORT}`);
+  console.log(
+    `SyncSpace server running on http://localhost:${PORT}`
+  );
 });
