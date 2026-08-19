@@ -5,222 +5,11 @@ import {
   useState,
 } from "react";
 
+import CodeEditor from "./CodeEditor/CodeEditor";
+
 import "./Workspace.css";
 
-/* =========================================================
-   FILE HELPERS
-   ========================================================= */
-
-const getLanguage = (fileName) => {
-  const extension = fileName
-    .split(".")
-    .pop()
-    .toLowerCase();
-
-  const languages = {
-    js: "JavaScript",
-    jsx: "JavaScript",
-    ts: "TypeScript",
-    tsx: "TypeScript",
-    html: "HTML",
-    htm: "HTML",
-    css: "CSS",
-    py: "Python",
-    java: "Java",
-    c: "C",
-    h: "C",
-    cpp: "C++",
-    cc: "C++",
-    cxx: "C++",
-    json: "JSON",
-    sql: "SQL",
-    md: "Markdown",
-  };
-
-  return languages[extension] || "Plain Text";
-};
-
-
-const getFileIcon = (fileName) => {
-  const extension = fileName
-    .split(".")
-    .pop()
-    .toLowerCase();
-
-  switch (extension) {
-    case "js":
-    case "jsx":
-      return "JS";
-
-    case "ts":
-    case "tsx":
-      return "TS";
-
-    case "py":
-      return "PY";
-
-    case "html":
-    case "htm":
-      return "<>";
-
-    case "css":
-      return "#";
-
-    case "java":
-      return "JV";
-
-    case "c":
-      return "C";
-
-    case "cpp":
-    case "cc":
-    case "cxx":
-      return "C++";
-
-    case "json":
-      return "{}";
-
-    case "sql":
-      return "DB";
-
-    case "md":
-      return "MD";
-
-    default:
-      return "TXT";
-  }
-};
-
-
-/* =========================================================
-   DEFAULT FILE
-   ========================================================= */
-
-const defaultFiles = [
-  {
-    id: 1,
-    name: "index.js",
-    language: "JavaScript",
-    code: `function hello() {
-  console.log("Hello SyncSpace!");
-}`,
-  },
-];
-
-
-/* =========================================================
-   DRAW SHAPE
-   ========================================================= */
-
-const drawShape = (ctx, shape) => {
-  if (!shape) {
-    return;
-  }
-
-  ctx.save();
-
-  ctx.strokeStyle = "#111111";
-  ctx.fillStyle = "transparent";
-  ctx.lineWidth = 3;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-
-  /* ---------------- PEN ---------------- */
-
-  if (shape.type === "pen") {
-    if (!shape.points || shape.points.length === 0) {
-      ctx.restore();
-      return;
-    }
-
-    ctx.beginPath();
-
-    ctx.moveTo(
-      shape.points[0].x,
-      shape.points[0].y
-    );
-
-    for (
-      let i = 1;
-      i < shape.points.length;
-      i += 1
-    ) {
-      ctx.lineTo(
-        shape.points[i].x,
-        shape.points[i].y
-      );
-    }
-
-    ctx.stroke();
-
-    ctx.restore();
-    return;
-  }
-
-
-  /* ---------------- RECTANGLE ---------------- */
-
-  if (shape.type === "rectangle") {
-    const x = Math.min(shape.startX, shape.endX);
-    const y = Math.min(shape.startY, shape.endY);
-
-    const width = Math.abs(
-      shape.endX - shape.startX
-    );
-
-    const height = Math.abs(
-      shape.endY - shape.startY
-    );
-
-    ctx.strokeRect(
-      x,
-      y,
-      width,
-      height
-    );
-
-    ctx.restore();
-    return;
-  }
-
-
-  /* ---------------- CIRCLE ---------------- */
-
-  if (shape.type === "circle") {
-    const radiusX =
-      Math.abs(shape.endX - shape.startX) / 2;
-
-    const radiusY =
-      Math.abs(shape.endY - shape.startY) / 2;
-
-    const centerX =
-      (shape.startX + shape.endX) / 2;
-
-    const centerY =
-      (shape.startY + shape.endY) / 2;
-
-    const radius =
-      Math.max(radiusX, radiusY);
-
-    ctx.beginPath();
-
-    ctx.arc(
-      centerX,
-      centerY,
-      radius,
-      0,
-      Math.PI * 2
-    );
-
-    ctx.stroke();
-
-    ctx.restore();
-    return;
-  }
-
-  ctx.restore();
-};
-
+import { useCollaborativeRoom } from "../../lib/useCollaborativeRoom";
 
 /* =========================================================
    TOOL BUTTON
@@ -237,13 +26,9 @@ function ToolButton({
     <button
       type="button"
       className={`tool-button ${
-        activeTool === value
-          ? "active"
-          : ""
+        activeTool === value ? "active" : ""
       }`}
-      onClick={() =>
-        onSelect(value)
-      }
+      onClick={() => onSelect(value)}
       title={title}
     >
       {children}
@@ -251,33 +36,352 @@ function ToolButton({
   );
 }
 
-
 /* =========================================================
    WHITEBOARD
    ========================================================= */
 
-function Whiteboard() {
+function Whiteboard({
+  yShapes,
+  collaborationStatus,
+  awareness,
+  updateAwareness,
+}) {
+  /* =======================================================
+     REFS
+     ======================================================= */
+
   const canvasRef = useRef(null);
+
   const containerRef = useRef(null);
 
   const drawingRef = useRef(false);
+
   const currentShapeRef = useRef(null);
+
   const shapesRef = useRef([]);
 
+  const movingRef = useRef(false);
+
+  const moveOriginRef = useRef(null);
+
+  const lastAwarenessSentRef = useRef(0);
+
+  /* =======================================================
+     STATE
+     ======================================================= */
+
   const [tool, setTool] = useState("pen");
+
   const [zoom, setZoom] = useState(1);
+
   const [hasDrawing, setHasDrawing] = useState(false);
 
   const [redoStack, setRedoStack] = useState([]);
 
+  const [selectedShapeId, setSelectedShapeId] =
+    useState(null);
 
-  /* =====================================================
-     REDRAW CANVAS
-     ===================================================== */
+  /*
+   * Store the canvas size in state so remote cursor
+   * rendering never reads containerRef.current during
+   * React render.
+   */
+  const [canvasSize, setCanvasSize] = useState({
+    width: 0,
+    height: 0,
+  });
 
-  const redraw = useCallback(() => {
+  /* =======================================================
+     CREATE SHAPE ID
+     ======================================================= */
+
+  const createShapeId = () => {
+    return `shape-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}`;
+  };
+
+  /* =======================================================
+     SHAPE BOUNDS
+     ======================================================= */
+
+  const getShapeBounds = (shape) => {
+    if (!shape) {
+      return null;
+    }
+
+    if (shape.type === "pen") {
+      if (!shape.points?.length) {
+        return null;
+      }
+
+      const xs = shape.points.map(
+        (point) => point.x
+      );
+
+      const ys = shape.points.map(
+        (point) => point.y
+      );
+
+      return {
+        minX: Math.min(...xs),
+        minY: Math.min(...ys),
+        maxX: Math.max(...xs),
+        maxY: Math.max(...ys),
+      };
+    }
+
+    if (
+      shape.type === "rectangle" ||
+      shape.type === "circle"
+    ) {
+      return {
+        minX: Math.min(
+          shape.startX,
+          shape.endX
+        ),
+        minY: Math.min(
+          shape.startY,
+          shape.endY
+        ),
+        maxX: Math.max(
+          shape.startX,
+          shape.endX
+        ),
+        maxY: Math.max(
+          shape.startY,
+          shape.endY
+        ),
+      };
+    }
+
+    return null;
+  };
+
+  /* =======================================================
+     HIT TEST
+     ======================================================= */
+
+  const hitTestShape = (
+    shape,
+    point,
+    padding = 10
+  ) => {
+    const bounds = getShapeBounds(shape);
+
+    if (!bounds) {
+      return false;
+    }
+
+    return (
+      point.x >= bounds.minX - padding &&
+      point.x <= bounds.maxX + padding &&
+      point.y >= bounds.minY - padding &&
+      point.y <= bounds.maxY + padding
+    );
+  };
+
+  /* =======================================================
+     DRAW SHAPE
+     ======================================================= */
+
+  const drawShape = useCallback(
+    (ctx, shape) => {
+      if (!shape) {
+        return;
+      }
+
+      ctx.save();
+
+      ctx.strokeStyle = "#E6E7EB";
+
+      ctx.fillStyle = "transparent";
+
+      ctx.lineWidth = 2.5;
+
+      ctx.lineCap = "round";
+
+      ctx.lineJoin = "round";
+
+      /* =================================================
+         SELECTION
+         ================================================= */
+
+      if (
+        shape.id &&
+        shape.id === selectedShapeId
+      ) {
+        const bounds =
+          getShapeBounds(shape);
+
+        if (bounds) {
+          ctx.save();
+
+          ctx.setLineDash([6, 4]);
+
+          ctx.strokeStyle = "#7c3aed";
+
+          ctx.lineWidth = 1.5;
+
+          ctx.strokeRect(
+            bounds.minX - 6,
+            bounds.minY - 6,
+            Math.max(
+              1,
+              bounds.maxX -
+                bounds.minX +
+                12
+            ),
+            Math.max(
+              1,
+              bounds.maxY -
+                bounds.minY +
+                12
+            )
+          );
+
+          ctx.restore();
+        }
+      }
+
+      /* =================================================
+         PEN
+         ================================================= */
+
+      if (shape.type === "pen") {
+        if (
+          !shape.points ||
+          shape.points.length === 0
+        ) {
+          ctx.restore();
+          return;
+        }
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          shape.points[0].x,
+          shape.points[0].y
+        );
+
+        for (
+          let index = 1;
+          index < shape.points.length;
+          index += 1
+        ) {
+          ctx.lineTo(
+            shape.points[index].x,
+            shape.points[index].y
+          );
+        }
+
+        ctx.stroke();
+
+        ctx.restore();
+
+        return;
+      }
+
+      /* =================================================
+         RECTANGLE
+         ================================================= */
+
+      if (shape.type === "rectangle") {
+        const x = Math.min(
+          shape.startX,
+          shape.endX
+        );
+
+        const y = Math.min(
+          shape.startY,
+          shape.endY
+        );
+
+        const width = Math.abs(
+          shape.endX -
+            shape.startX
+        );
+
+        const height = Math.abs(
+          shape.endY -
+            shape.startY
+        );
+
+        ctx.strokeRect(
+          x,
+          y,
+          width,
+          height
+        );
+
+        ctx.restore();
+
+        return;
+      }
+
+      /* =================================================
+         CIRCLE
+         ================================================= */
+
+      if (shape.type === "circle") {
+        const radiusX =
+          Math.abs(
+            shape.endX -
+              shape.startX
+          ) / 2;
+
+        const radiusY =
+          Math.abs(
+            shape.endY -
+              shape.startY
+          ) / 2;
+
+        const centerX =
+          (shape.startX +
+            shape.endX) /
+          2;
+
+        const centerY =
+          (shape.startY +
+            shape.endY) /
+          2;
+
+        const radius = Math.max(
+          radiusX,
+          radiusY
+        );
+
+        ctx.beginPath();
+
+        ctx.arc(
+          centerX,
+          centerY,
+          radius,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.stroke();
+
+        ctx.restore();
+
+        return;
+      }
+
+      ctx.restore();
+    },
+    [selectedShapeId]
+  );
+
+  /* =======================================================
+     RESIZE CANVAS
+     ======================================================= */
+
+  const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
-    const container = containerRef.current;
+
+    const container =
+      containerRef.current;
 
     if (!canvas || !container) {
       return;
@@ -286,7 +390,81 @@ function Whiteboard() {
     const rect =
       container.getBoundingClientRect();
 
-    const ctx = canvas.getContext("2d");
+    const dpr =
+      window.devicePixelRatio || 1;
+
+    const width = Math.max(
+      1,
+      Math.floor(rect.width)
+    );
+
+    const height = Math.max(
+      1,
+      Math.floor(rect.height)
+    );
+
+    const targetWidth =
+      Math.floor(width * dpr);
+
+    const targetHeight =
+      Math.floor(height * dpr);
+
+    if (
+      canvas.width !==
+        targetWidth ||
+      canvas.height !==
+        targetHeight
+    ) {
+      canvas.width =
+        targetWidth;
+
+      canvas.height =
+        targetHeight;
+    }
+
+    canvas.style.width =
+      `${width}px`;
+
+    canvas.style.height =
+      `${height}px`;
+
+    const ctx =
+      canvas.getContext("2d");
+
+    if (!ctx) {
+      return;
+    }
+
+    ctx.setTransform(
+      dpr,
+      0,
+      0,
+      dpr,
+      0,
+      0
+    );
+  }, []);
+
+  /* =======================================================
+     REDRAW
+     ======================================================= */
+
+  const redraw = useCallback(() => {
+    const canvas =
+      canvasRef.current;
+
+    const container =
+      containerRef.current;
+
+    if (!canvas || !container) {
+      return;
+    }
+
+    const rect =
+      container.getBoundingClientRect();
+
+    const ctx =
+      canvas.getContext("2d");
 
     if (!ctx) {
       return;
@@ -296,13 +474,8 @@ function Whiteboard() {
       window.devicePixelRatio || 1;
 
     const width = rect.width;
+
     const height = rect.height;
-
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
 
     ctx.setTransform(
       dpr,
@@ -319,6 +492,10 @@ function Whiteboard() {
       width,
       height
     );
+
+    /* =================================================
+       APPLY ZOOM
+       ================================================= */
 
     ctx.save();
 
@@ -337,13 +514,26 @@ function Whiteboard() {
       -height / 2
     );
 
+    /* =================================================
+       DRAW COMMITTED SHAPES
+       ================================================= */
+
     shapesRef.current.forEach(
       (shape) => {
-        drawShape(ctx, shape);
+        drawShape(
+          ctx,
+          shape
+        );
       }
     );
 
-    if (currentShapeRef.current) {
+    /* =================================================
+       DRAW CURRENT SHAPE
+       ================================================= */
+
+    if (
+      currentShapeRef.current
+    ) {
       drawShape(
         ctx,
         currentShapeRef.current
@@ -351,12 +541,117 @@ function Whiteboard() {
     }
 
     ctx.restore();
-  }, [zoom]);
+  }, [zoom, drawShape]);
 
+  /* =======================================================
+     YJS → CANVAS
+     ======================================================= */
 
-  /* =====================================================
+  useEffect(() => {
+    if (!yShapes) {
+      return undefined;
+    }
+
+    const syncFromYjs = () => {
+      const sharedShapes =
+        yShapes.toArray();
+
+      shapesRef.current =
+        sharedShapes;
+
+      setHasDrawing(
+        sharedShapes.length > 0
+      );
+
+      if (
+        selectedShapeId &&
+        !sharedShapes.some(
+          (shape) =>
+            shape?.id ===
+            selectedShapeId
+        )
+      ) {
+        setSelectedShapeId(null);
+      }
+
+      requestAnimationFrame(
+        () => {
+          redraw();
+        }
+      );
+    };
+
+    syncFromYjs();
+
+    yShapes.observe(
+      syncFromYjs
+    );
+
+    return () => {
+      yShapes.unobserve(
+        syncFromYjs
+      );
+    };
+  }, [
+    yShapes,
+    redraw,
+    selectedShapeId,
+  ]);
+
+  /* =======================================================
+     COMMIT SHAPES TO YJS
+     ======================================================= */
+
+  const commitShapes =
+    useCallback(
+      (nextShapes) => {
+        if (!yShapes) {
+          return;
+        }
+
+        const normalizedShapes =
+          nextShapes.map(
+            (shape) => ({
+              ...shape,
+              id:
+                shape.id ||
+                createShapeId(),
+            })
+          );
+
+        yShapes.doc.transact(
+          () => {
+            if (
+              yShapes.length > 0
+            ) {
+              yShapes.delete(
+                0,
+                yShapes.length
+              );
+            }
+
+            if (
+              normalizedShapes.length >
+              0
+            ) {
+              yShapes.insert(
+                0,
+                normalizedShapes
+              );
+            }
+          },
+          "local"
+        );
+
+        shapesRef.current =
+          normalizedShapes;
+      },
+      [yShapes]
+    );
+
+  /* =======================================================
      RESIZE OBSERVER
-     ===================================================== */
+     ======================================================= */
 
   useEffect(() => {
     const container =
@@ -366,26 +661,50 @@ function Whiteboard() {
       return undefined;
     }
 
-    redraw();
+    const handleResize = () => {
+      resizeCanvas();
+      redraw();
+
+      /*
+       * Reading the DOM ref here is safe because this
+       * runs inside an effect/ResizeObserver, not during
+       * React render.
+       */
+      const rect =
+        container.getBoundingClientRect();
+
+      setCanvasSize({
+        width: rect.width,
+        height: rect.height,
+      });
+    };
+
+    handleResize();
 
     const observer =
-      new ResizeObserver(() => {
-        redraw();
-      });
+      new ResizeObserver(
+        handleResize
+      );
 
-    observer.observe(container);
+    observer.observe(
+      container
+    );
 
     return () => {
       observer.disconnect();
     };
-  }, [redraw]);
+  }, [
+    resizeCanvas,
+    redraw,
+  ]);
 
+  /* =======================================================
+     POINTER POSITION
+     ======================================================= */
 
-  /* =====================================================
-     GET CANVAS POSITION
-     ===================================================== */
-
-  const getPointerPosition = (event) => {
+  const getPointerPosition = (
+    event
+  ) => {
     const canvas =
       canvasRef.current;
 
@@ -400,10 +719,12 @@ function Whiteboard() {
       canvas.getBoundingClientRect();
 
     const rawX =
-      event.clientX - rect.left;
+      event.clientX -
+      rect.left;
 
     const rawY =
-      event.clientY - rect.top;
+      event.clientY -
+      rect.top;
 
     const centerX =
       rect.width / 2;
@@ -413,132 +734,87 @@ function Whiteboard() {
 
     return {
       x:
-        (rawX - centerX) / zoom +
+        (rawX - centerX) /
+          zoom +
         centerX,
 
       y:
-        (rawY - centerY) / zoom +
+        (rawY - centerY) /
+          zoom +
         centerY,
     };
   };
 
+  /* =======================================================
+     AWARENESS
+     ======================================================= */
 
-  /* =====================================================
-     POINTER DOWN
-     ===================================================== */
+  const remoteCursors =
+    Object.entries(
+      awareness || {}
+    ).filter(
+      ([socketId, value]) =>
+        socketId &&
+        value &&
+        value.visible !==
+          false &&
+        Number.isFinite(
+          value.x
+        ) &&
+        Number.isFinite(
+          value.y
+        )
+    );
 
-  const handlePointerDown = (event) => {
-    if (tool === "eraser") {
-      eraseAtPosition(event);
+  const broadcastCursor = (
+    point
+  ) => {
+    if (!updateAwareness) {
       return;
     }
 
-    const point =
-      getPointerPosition(event);
+    const now =
+      performance.now();
 
-    drawingRef.current = true;
-
-    if (tool === "pen") {
-      currentShapeRef.current = {
-        type: "pen",
-        points: [point],
-      };
-    }
+    /*
+     * Limit awareness traffic
+     * to approximately 30 updates
+     * per second.
+     */
 
     if (
-      tool === "rectangle" ||
-      tool === "circle"
+      now -
+        lastAwarenessSentRef.current <
+      33
     ) {
-      currentShapeRef.current = {
-        type: tool,
-        startX: point.x,
-        startY: point.y,
-        endX: point.x,
-        endY: point.y,
-      };
-    }
-
-    redraw();
-  };
-
-
-  /* =====================================================
-     POINTER MOVE
-     ===================================================== */
-
-  const handlePointerMove = (event) => {
-    if (!drawingRef.current) {
       return;
     }
 
-    const point =
-      getPointerPosition(event);
+    lastAwarenessSentRef.current =
+      now;
 
-    const current =
-      currentShapeRef.current;
-
-    if (!current) {
-      return;
-    }
-
-    if (current.type === "pen") {
-      current.points.push(point);
-    }
-
-    if (
-      current.type === "rectangle" ||
-      current.type === "circle"
-    ) {
-      current.endX = point.x;
-      current.endY = point.y;
-    }
-
-    redraw();
+    updateAwareness({
+      type: "cursor",
+      x: point.x,
+      y: point.y,
+      visible: true,
+    });
   };
 
-
-  /* =====================================================
-     POINTER UP
-     ===================================================== */
-
-  const handlePointerUp = () => {
-    if (!drawingRef.current) {
-      return;
-    }
-
-    drawingRef.current = false;
-
-    const completedShape =
-      currentShapeRef.current;
-
-    if (
-      completedShape &&
-      (
-        completedShape.type === "pen"
-          ? completedShape.points.length > 1
-          : true
-      )
-    ) {
-      shapesRef.current.push(
-        completedShape
-      );
-
-      setHasDrawing(true);
-
-      setRedoStack([]);
-    }
-
-    currentShapeRef.current = null;
-
-    redraw();
+  const hideRemoteCursor = () => {
+    updateAwareness?.({
+      type: "cursor",
+      visible: false,
+    });
   };
 
+  /* =======================================================
+     ERASE
+     ======================================================= */
 
-  /* =====================================================
-     ERASER
-     ===================================================== */
-
-  const eraseAtPosition = (event) => {
+  const eraseAtPosition = (
+    event
+  ) => {
     const point =
       getPointerPosition(event);
 
@@ -547,19 +823,28 @@ function Whiteboard() {
     const filtered =
       shapesRef.current.filter(
         (shape) => {
-          if (shape.type === "pen") {
+          if (
+            shape.type ===
+            "pen"
+          ) {
             return !shape.points.some(
               (p) =>
-                Math.abs(p.x - point.x) <
+                Math.abs(
+                  p.x - point.x
+                ) <
                   eraserSize &&
-                Math.abs(p.y - point.y) <
+                Math.abs(
+                  p.y - point.y
+                ) <
                   eraserSize
             );
           }
 
           if (
-            shape.type === "rectangle" ||
-            shape.type === "circle"
+            shape.type ===
+              "rectangle" ||
+            shape.type ===
+              "circle"
           ) {
             const minX =
               Math.min(
@@ -586,10 +871,18 @@ function Whiteboard() {
               );
 
             return !(
-              point.x >= minX - eraserSize &&
-              point.x <= maxX + eraserSize &&
-              point.y >= minY - eraserSize &&
-              point.y <= maxY + eraserSize
+              point.x >=
+                minX -
+                  eraserSize &&
+              point.x <=
+                maxX +
+                  eraserSize &&
+              point.y >=
+                minY -
+                  eraserSize &&
+              point.y <=
+                maxY +
+                  eraserSize
             );
           }
 
@@ -597,37 +890,485 @@ function Whiteboard() {
         }
       );
 
-    shapesRef.current = filtered;
+    shapesRef.current =
+      filtered;
+
+    commitShapes(
+      filtered
+    );
 
     setHasDrawing(
       filtered.length > 0
     );
 
+    setRedoStack([]);
+
+    setSelectedShapeId(null);
+
     redraw();
   };
 
+  /* =======================================================
+     POINTER DOWN
+     ======================================================= */
 
-  /* =====================================================
+  const handlePointerDown = (
+    event
+  ) => {
+    event.preventDefault();
+
+    if (
+      tool === "eraser"
+    ) {
+      eraseAtPosition(
+        event
+      );
+
+      return;
+    }
+
+    const point =
+      getPointerPosition(
+        event
+      );
+
+    if (
+      tool === "select"
+    ) {
+      const hit =
+        [...shapesRef.current]
+          .reverse()
+          .find(
+            (shape) =>
+              hitTestShape(
+                shape,
+                point,
+                12
+              )
+          );
+
+      if (!hit) {
+        setSelectedShapeId(
+          null
+        );
+
+        currentShapeRef.current =
+          null;
+
+        redraw();
+
+        return;
+      }
+
+      setSelectedShapeId(
+        hit.id
+      );
+
+      movingRef.current =
+        true;
+
+      drawingRef.current =
+        true;
+
+      currentShapeRef.current =
+        {
+          ...hit,
+          points:
+            hit.points
+              ? hit.points.map(
+                  (p) => ({
+                    ...p,
+                  })
+                )
+              : undefined,
+        };
+
+      moveOriginRef.current =
+        {
+          x: point.x,
+          y: point.y,
+        };
+
+      if (
+        canvasRef.current
+      ) {
+        try {
+          canvasRef.current.setPointerCapture(
+            event.pointerId
+          );
+        } catch {
+          // Ignore pointer capture errors.
+        }
+      }
+
+      redraw();
+
+      return;
+    }
+
+    drawingRef.current =
+      true;
+
+    if (
+      canvasRef.current
+    ) {
+      try {
+        canvasRef.current.setPointerCapture(
+          event.pointerId
+        );
+      } catch {
+        // Ignore pointer capture errors.
+      }
+    }
+
+    if (
+      tool === "pen"
+    ) {
+      currentShapeRef.current =
+        {
+          id: createShapeId(),
+          type: "pen",
+          points: [point],
+        };
+    }
+
+    if (
+      tool === "rectangle" ||
+      tool === "circle"
+    ) {
+      currentShapeRef.current =
+        {
+          id: createShapeId(),
+          type: tool,
+          startX: point.x,
+          startY: point.y,
+          endX: point.x,
+          endY: point.y,
+        };
+    }
+
+    redraw();
+  };
+
+  /* =======================================================
+     POINTER MOVE
+     ======================================================= */
+
+  const handlePointerMove = (
+    event
+  ) => {
+    const point =
+      getPointerPosition(
+        event
+      );
+
+    /*
+     * Send cursor position to
+     * other users even when we
+     * are not drawing.
+     */
+
+    broadcastCursor(point);
+
+    if (
+      !drawingRef.current
+    ) {
+      return;
+    }
+
+    const current =
+      currentShapeRef.current;
+
+    if (!current) {
+      return;
+    }
+
+    /* =================================================
+       MOVE EXISTING SHAPE
+       ================================================= */
+
+    if (
+      movingRef.current
+    ) {
+      const origin =
+        moveOriginRef.current;
+
+      if (!origin) {
+        return;
+      }
+
+      const source =
+        shapesRef.current.find(
+          (shape) =>
+            shape.id ===
+            current.id
+        );
+
+      if (!source) {
+        return;
+      }
+
+      const dx =
+        point.x -
+        origin.x;
+
+      const dy =
+        point.y -
+        origin.y;
+
+      const moved = {
+        ...source,
+      };
+
+      if (
+        moved.type ===
+        "pen"
+      ) {
+        moved.points =
+          source.points.map(
+            (p) => ({
+              x:
+                p.x + dx,
+              y:
+                p.y + dy,
+            })
+          );
+      } else {
+        moved.startX =
+          source.startX +
+          dx;
+
+        moved.startY =
+          source.startY +
+          dy;
+
+        moved.endX =
+          source.endX +
+          dx;
+
+        moved.endY =
+          source.endY +
+          dy;
+      }
+
+      currentShapeRef.current =
+        moved;
+
+      redraw();
+
+      return;
+    }
+
+    /* =================================================
+       DRAW PEN
+       ================================================= */
+
+    if (
+      current.type ===
+      "pen"
+    ) {
+      current.points.push(
+        point
+      );
+    }
+
+    /* =================================================
+       DRAW SHAPE
+       ================================================= */
+
+    if (
+      current.type ===
+        "rectangle" ||
+      current.type ===
+        "circle"
+    ) {
+      current.endX =
+        point.x;
+
+      current.endY =
+        point.y;
+    }
+
+    redraw();
+  };
+
+  /* =======================================================
+     POINTER UP
+     ======================================================= */
+
+  const handlePointerUp = (
+    event
+  ) => {
+    event.preventDefault();
+
+    hideRemoteCursor();
+
+    if (
+      !drawingRef.current
+    ) {
+      return;
+    }
+
+    drawingRef.current =
+      false;
+
+    if (
+      canvasRef.current &&
+      canvasRef.current.hasPointerCapture(
+        event.pointerId
+      )
+    ) {
+      try {
+        canvasRef.current.releasePointerCapture(
+          event.pointerId
+        );
+      } catch {
+        // Ignore pointer release errors.
+      }
+    }
+
+    /* =================================================
+       FINISH MOVING SHAPE
+       ================================================= */
+
+    if (
+      movingRef.current
+    ) {
+      const movedShape =
+        currentShapeRef.current;
+
+      const index =
+        shapesRef.current.findIndex(
+          (shape) =>
+            shape.id ===
+            movedShape?.id
+        );
+
+      if (
+        index !== -1 &&
+        movedShape
+      ) {
+        const nextShapes =
+          [
+            ...shapesRef.current,
+          ];
+
+        nextShapes[index] =
+          movedShape;
+
+        shapesRef.current =
+          nextShapes;
+
+        commitShapes(
+          nextShapes
+        );
+
+        setRedoStack([]);
+      }
+
+      movingRef.current =
+        false;
+
+      moveOriginRef.current =
+        null;
+
+      currentShapeRef.current =
+        null;
+
+      redraw();
+
+      return;
+    }
+
+    /* =================================================
+       FINISH DRAWING
+       ================================================= */
+
+    const completedShape =
+      currentShapeRef.current;
+
+    const isValidShape =
+      completedShape &&
+      (
+        completedShape.type ===
+        "pen"
+          ? completedShape
+              .points &&
+            completedShape
+              .points
+              .length > 1
+          : true
+      );
+
+    if (
+      isValidShape
+    ) {
+      const nextShapes =
+        [
+          ...shapesRef.current,
+          completedShape,
+        ];
+
+      shapesRef.current =
+        nextShapes;
+
+      commitShapes(
+        nextShapes
+      );
+
+      setHasDrawing(
+        true
+      );
+
+      setRedoStack([]);
+    }
+
+    currentShapeRef.current =
+      null;
+
+    redraw();
+  };
+
+  /* =======================================================
+     POINTER LEAVE
+     ======================================================= */
+
+  const handlePointerLeave =
+    () => {
+      hideRemoteCursor();
+    };
+
+  /* =======================================================
      UNDO
-     ===================================================== */
+     ======================================================= */
 
   const undo = () => {
-    if (shapesRef.current.length === 0) {
+    if (
+      shapesRef.current
+        .length === 0
+    ) {
       return;
     }
 
     const copy =
-      [...shapesRef.current];
+      [
+        ...shapesRef.current,
+      ];
 
     const removed =
       copy.pop();
 
-    shapesRef.current = copy;
+    shapesRef.current =
+      copy;
 
-    setRedoStack((prev) => [
-      ...prev,
-      removed,
-    ]);
+    commitShapes(copy);
+
+    setRedoStack(
+      (previous) => [
+        ...previous,
+        removed,
+      ]
+    );
 
     setHasDrawing(
       copy.length > 0
@@ -636,13 +1377,15 @@ function Whiteboard() {
     redraw();
   };
 
-
-  /* =====================================================
+  /* =======================================================
      REDO
-     ===================================================== */
+     ======================================================= */
 
   const redo = () => {
-    if (redoStack.length === 0) {
+    if (
+      redoStack.length ===
+      0
+    ) {
       return;
     }
 
@@ -652,88 +1395,106 @@ function Whiteboard() {
     const restored =
       copy.pop();
 
-    shapesRef.current.push(
-      restored
+    const nextShapes =
+      [
+        ...shapesRef.current,
+        restored,
+      ];
+
+    shapesRef.current =
+      nextShapes;
+
+    commitShapes(
+      nextShapes
     );
 
     setRedoStack(copy);
 
-    setHasDrawing(true);
+    setHasDrawing(
+      true
+    );
 
     redraw();
   };
 
-
-  /* =====================================================
+  /* =======================================================
      CLEAR
-     ===================================================== */
+     ======================================================= */
 
   const clearCanvas = () => {
-    if (shapesRef.current.length === 0) {
+    if (
+      shapesRef.current
+        .length === 0
+    ) {
       return;
     }
 
     setRedoStack(
-      (prev) => [
-        ...prev,
+      (previous) => [
+        ...previous,
         ...shapesRef.current,
       ]
     );
 
-    shapesRef.current = [];
+    shapesRef.current =
+      [];
 
-    currentShapeRef.current = null;
+    currentShapeRef.current =
+      null;
 
-    setHasDrawing(false);
+    setSelectedShapeId(
+      null
+    );
+
+    commitShapes([]);
+
+    setHasDrawing(
+      false
+    );
 
     redraw();
   };
 
-
-  /* =====================================================
+  /* =======================================================
      ZOOM
-     ===================================================== */
+     ======================================================= */
 
   const zoomIn = () => {
     setZoom(
-      (prev) =>
+      (previous) =>
         Math.min(
-          prev + 0.1,
+          previous + 0.1,
           2
         )
     );
   };
 
-
   const zoomOut = () => {
     setZoom(
-      (prev) =>
+      (previous) =>
         Math.max(
-          prev - 0.1,
+          previous - 0.1,
           0.5
         )
     );
   };
 
-
   const resetZoom = () => {
     setZoom(1);
   };
 
-
-  /* =====================================================
+  /* =======================================================
      WHITEBOARD UI
-     ===================================================== */
+     ======================================================= */
 
   return (
     <div className="whiteboard">
-
-      {/* HEADER */}
+      {/* =================================================
+          HEADER
+          ================================================= */}
 
       <div className="panel-header">
-
         <div className="panel-title">
-
           <div className="panel-icon">
             ✦
           </div>
@@ -747,7 +1508,33 @@ function Whiteboard() {
               Collaborative canvas
             </span>
           </div>
+        </div>
 
+        <div className="canvas-sync-status">
+          <span
+            className={`status-dot ${
+              collaborationStatus ===
+                "synced" ||
+              collaborationStatus ===
+                "connected"
+                ? "online"
+                : ""
+            }`}
+          />
+
+          {collaborationStatus ===
+          "synced"
+            ? "Synced"
+            : collaborationStatus ===
+              "connected"
+            ? "Connected"
+            : collaborationStatus ===
+              "connecting"
+            ? "Connecting"
+            : collaborationStatus ===
+              "error"
+            ? "Connection error"
+            : "Offline"}
         </div>
 
         <button
@@ -757,13 +1544,21 @@ function Whiteboard() {
         >
           ...
         </button>
-
       </div>
 
-
-      {/* TOOLBAR */}
+      {/* =================================================
+          TOOLBAR
+          ================================================= */}
 
       <div className="whiteboard-toolbar">
+        <ToolButton
+          value="select"
+          title="Select and move"
+          activeTool={tool}
+          onSelect={setTool}
+        >
+          ↖
+        </ToolButton>
 
         <ToolButton
           value="pen"
@@ -774,7 +1569,6 @@ function Whiteboard() {
           🖊
         </ToolButton>
 
-
         <ToolButton
           value="eraser"
           title="Eraser"
@@ -783,7 +1577,6 @@ function Whiteboard() {
         >
           ⌫
         </ToolButton>
-
 
         <ToolButton
           value="rectangle"
@@ -794,7 +1587,6 @@ function Whiteboard() {
           □
         </ToolButton>
 
-
         <ToolButton
           value="circle"
           title="Circle"
@@ -804,65 +1596,87 @@ function Whiteboard() {
           ○
         </ToolButton>
 
-
         <div className="toolbar-divider" />
-
 
         <button
           type="button"
           className="tool-button"
           onClick={undo}
           title="Undo"
+          disabled={
+            !hasDrawing
+          }
         >
           ↶
         </button>
-
 
         <button
           type="button"
           className="tool-button"
           onClick={redo}
           title="Redo"
+          disabled={
+            redoStack.length ===
+            0
+          }
         >
           ↷
         </button>
 
-
         <button
           type="button"
           className="tool-button"
-          onClick={clearCanvas}
+          onClick={
+            clearCanvas
+          }
           title="Clear"
+          disabled={
+            !hasDrawing
+          }
         >
           ♲
         </button>
-
       </div>
 
-
-      {/* CANVAS */}
+      {/* =================================================
+          CANVAS
+          ================================================= */}
 
       <div
         ref={containerRef}
         className="whiteboard-canvas-container"
       >
-
         <canvas
           ref={canvasRef}
           className="whiteboard-canvas"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onPointerLeave={handlePointerUp}
+          onPointerDown={
+            handlePointerDown
+          }
+          onPointerMove={
+            handlePointerMove
+          }
+          onPointerUp={
+            handlePointerUp
+          }
+          onPointerCancel={
+            handlePointerUp
+          }
+          onPointerLeave={
+            handlePointerLeave
+          }
+          onContextMenu={(
+            event
+          ) =>
+            event.preventDefault()
+          }
         />
 
-
-        {/* EMPTY STATE */}
+        {/* =================================================
+            START DRAWING
+            ================================================= */}
 
         {!hasDrawing && (
           <div className="canvas-message">
-
             <div className="canvas-icon">
               ✦
             </div>
@@ -872,31 +1686,137 @@ function Whiteboard() {
             </h3>
 
             <p>
-              Draw, sketch, and share ideas
+              Draw, move, erase,
+              and share ideas
               with your team.
             </p>
 
             <button
               type="button"
               className="start-drawing-button"
-              onClick={() =>
-                setTool("pen")
-              }
+              onClick={() => {
+                setHasDrawing(true);
+                setTool("pen");
+
+                requestAnimationFrame(
+                  () => {
+                    canvasRef.current?.focus();
+                  }
+                );
+              }}
             >
               Start drawing
             </button>
-
           </div>
         )}
 
+        {/* =================================================
+            REMOTE CURSORS
+            ================================================= */}
 
-        {/* ZOOM */}
+        {remoteCursors.map(
+          ([
+            socketId,
+            cursor,
+          ]) => {
+            /*
+             * IMPORTANT:
+             * Do not access containerRef.current during
+             * render. canvasSize is updated by the resize
+             * observer inside an effect.
+             *
+             * The canvas zoom is centered around the
+             * middle of the whiteboard, so apply the same
+             * transform to the remote cursor.
+             */
+
+            const x =
+              canvasSize.width / 2 +
+              (cursor.x -
+                canvasSize.width / 2) *
+                zoom;
+
+            const y =
+              canvasSize.height / 2 +
+              (cursor.y -
+                canvasSize.height / 2) *
+                zoom;
+
+            return (
+              <div
+                key={
+                  socketId
+                }
+                style={{
+                  position:
+                    "absolute",
+                  left: `${x}px`,
+                  top: `${y}px`,
+                  transform:
+                    "translate(-2px, -2px)",
+                  pointerEvents:
+                    "none",
+                  zIndex: 20,
+                  display:
+                    "flex",
+                  alignItems:
+                    "center",
+                  gap: "4px",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize:
+                      "18px",
+                    lineHeight: 1,
+                    color:
+                      "#7c3aed",
+                    textShadow:
+                      "0 1px 3px rgba(0,0,0,.5)",
+                  }}
+                >
+                  ➤
+                </span>
+
+                <span
+                  style={{
+                    padding:
+                      "3px 6px",
+                    borderRadius:
+                      "5px",
+                    background:
+                      "#7c3aed",
+                    color:
+                      "#fff",
+                    fontSize:
+                      "10px",
+                    fontWeight:
+                      600,
+                    whiteSpace:
+                      "nowrap",
+                  }}
+                >
+                  {socketId.slice(
+                    0,
+                    8
+                  )}
+                </span>
+              </div>
+            );
+          }
+        )}
+
+        {/* =================================================
+            ZOOM
+            ================================================= */}
 
         <div className="zoom-controls">
-
           <button
             type="button"
-            onClick={zoomOut}
+            onClick={
+              zoomOut
+            }
+            title="Zoom out"
           >
             −
           </button>
@@ -904,775 +1824,149 @@ function Whiteboard() {
           <button
             type="button"
             className="zoom-value"
-            onClick={resetZoom}
+            onClick={
+              resetZoom
+            }
+            title="Reset zoom"
           >
-            {Math.round(zoom * 100)}%
+            {Math.round(
+              zoom * 100
+            )}
+            %
           </button>
 
           <button
             type="button"
-            onClick={zoomIn}
+            onClick={
+              zoomIn
+            }
+            title="Zoom in"
           >
             +
           </button>
-
         </div>
-
       </div>
-
     </div>
   );
 }
-
-
-/* =========================================================
-   CODE EDITOR
-   ========================================================= */
-
-function CodeEditor() {
-  const [files, setFiles] =
-    useState(defaultFiles);
-
-  const [activeFileId, setActiveFileId] =
-    useState(1);
-
-  const [showNewFile, setShowNewFile] =
-    useState(false);
-
-  const [newFileName, setNewFileName] =
-    useState("");
-
-  const [output, setOutput] =
-    useState("");
-
-  const [isRunning, setIsRunning] =
-    useState(false);
-
-  const [saved, setSaved] =
-    useState(true);
-
-  const textareaRef =
-    useRef(null);
-
-
-  /* =====================================================
-     ACTIVE FILE
-     ===================================================== */
-
-  const activeFile =
-    files.find(
-      (file) =>
-        file.id === activeFileId
-    ) || files[0];
-
-
-  /* =====================================================
-     CREATE FILE
-     ===================================================== */
-
-  const createNewFile = () => {
-    const name =
-      newFileName.trim();
-
-    if (!name) {
-      return;
-    }
-
-    const alreadyExists =
-      files.some(
-        (file) =>
-          file.name.toLowerCase() ===
-          name.toLowerCase()
-      );
-
-    if (alreadyExists) {
-      return;
-    }
-
-    const newFile = {
-      id: Date.now(),
-      name,
-      language: getLanguage(name),
-      code: "",
-    };
-
-    setFiles((prev) => [
-      ...prev,
-      newFile,
-    ]);
-
-    setActiveFileId(
-      newFile.id
-    );
-
-    setNewFileName("");
-
-    setShowNewFile(false);
-
-    setSaved(true);
-
-    setOutput("");
-  };
-
-
-  /* =====================================================
-     CLOSE FILE
-     ===================================================== */
-
-  const closeFile = (id) => {
-    if (files.length === 1) {
-      return;
-    }
-
-    const index =
-      files.findIndex(
-        (file) =>
-          file.id === id
-      );
-
-    const remainingFiles =
-      files.filter(
-        (file) =>
-          file.id !== id
-      );
-
-    setFiles(remainingFiles);
-
-    if (activeFileId === id) {
-      const nextFile =
-        remainingFiles[
-          Math.max(
-            0,
-            index - 1
-          )
-        ];
-
-      setActiveFileId(
-        nextFile.id
-      );
-    }
-
-    setOutput("");
-  };
-
-
-  /* =====================================================
-     UPDATE CODE
-     ===================================================== */
-
-  const updateFileCode = (value) => {
-    setFiles((prev) =>
-      prev.map((file) =>
-        file.id === activeFileId
-          ? {
-              ...file,
-              code: value,
-            }
-          : file
-      )
-    );
-
-    setSaved(false);
-  };
-
-
-  /* =====================================================
-     SAVE
-     ===================================================== */
-
-  const saveFile = useCallback(() => {
-    setSaved(true);
-  }, []);
-
-
-  /* =====================================================
-     KEYBOARD SHORTCUTS
-     ===================================================== */
-
-  useEffect(() => {
-    const handleKeyDown =
-      (event) => {
-        if (
-          (event.ctrlKey ||
-            event.metaKey) &&
-          event.key.toLowerCase() ===
-            "s"
-        ) {
-          event.preventDefault();
-
-          saveFile();
-        }
-      };
-
-    window.addEventListener(
-      "keydown",
-      handleKeyDown
-    );
-
-    return () => {
-      window.removeEventListener(
-        "keydown",
-        handleKeyDown
-      );
-    };
-  }, [saveFile]);
-
-
-  /* =====================================================
-     TAB KEY
-     ===================================================== */
-
-  const handleEditorKeyDown =
-    (event) => {
-      if (event.key === "Tab") {
-        event.preventDefault();
-
-        const textarea =
-          textareaRef.current;
-
-        if (!textarea) {
-          return;
-        }
-
-        const start =
-          textarea.selectionStart;
-
-        const end =
-          textarea.selectionEnd;
-
-        const value =
-          activeFile.code;
-
-        const newValue =
-          value.substring(
-            0,
-            start
-          ) +
-          "  " +
-          value.substring(end);
-
-        updateFileCode(
-          newValue
-        );
-
-        requestAnimationFrame(() => {
-          textarea.selectionStart =
-            start + 2;
-
-          textarea.selectionEnd =
-            start + 2;
-        });
-      }
-    };
-
-
-  /* =====================================================
-     RUN JAVASCRIPT
-     ===================================================== */
-
-  const runCode = () => {
-    if (!activeFile) {
-      return;
-    }
-
-    setIsRunning(true);
-
-    setOutput("");
-
-    if (
-      activeFile.language !==
-      "JavaScript"
-    ) {
-      setOutput(
-        `${activeFile.language} execution is not connected yet.\n\nJavaScript execution is currently supported in the browser.`
-      );
-
-      setIsRunning(false);
-
-      return;
-    }
-
-    try {
-      const logs = [];
-
-      const originalLog =
-        console.log;
-
-      console.log =
-        (...args) => {
-          logs.push(
-            args
-              .map((arg) => {
-                if (
-                  typeof arg ===
-                  "object"
-                ) {
-                  try {
-                    return JSON.stringify(
-                      arg,
-                      null,
-                      2
-                    );
-                  } catch {
-                    return String(arg);
-                  }
-                }
-
-                return String(arg);
-              })
-              .join(" ")
-          );
-
-          originalLog(...args);
-        };
-
-      const result =
-        Function(
-          activeFile.code
-        )();
-
-      console.log =
-        originalLog;
-
-      if (logs.length > 0) {
-        setOutput(
-          logs.join("\n")
-        );
-      } else if (
-        result !== undefined
-      ) {
-        setOutput(
-          String(result)
-        );
-      } else {
-        setOutput(
-          "Code executed successfully."
-        );
-      }
-    } catch (error) {
-      setOutput(
-        `Error: ${error.message}`
-      );
-    }
-
-    setIsRunning(false);
-  };
-
-
-  /* =====================================================
-     LINE NUMBERS
-     ===================================================== */
-
-  const codeLines =
-    (activeFile?.code || "")
-      .split("\n");
-
-
-  /* =====================================================
-     CODE EDITOR UI
-     ===================================================== */
-
-  return (
-    <div className="code-editor">
-
-      {/* HEADER */}
-
-      <div className="code-editor-header">
-
-        <div className="code-editor-title">
-
-          <div className="editor-icon">
-            {"</>"}
-          </div>
-
-          <div>
-            <h2>
-              Code Editor
-            </h2>
-
-            <span>
-              Collaborative coding
-            </span>
-          </div>
-
-        </div>
-
-
-        <div className="editor-actions">
-
-          <button
-            type="button"
-            className="run-button"
-            onClick={runCode}
-            disabled={isRunning}
-          >
-            {isRunning
-              ? "Running..."
-              : "▶ Run"}
-          </button>
-
-
-          <button
-            type="button"
-            className="panel-menu"
-            title="Code editor menu"
-          >
-            ...
-          </button>
-
-        </div>
-
-      </div>
-
-
-      {/* FILE TABS */}
-
-      <div className="file-tabs">
-
-        {files.map((file) => (
-          <div
-            key={file.id}
-            className={`file-tab ${
-              activeFileId === file.id
-                ? "active"
-                : ""
-            }`}
-            onClick={() => {
-              setActiveFileId(
-                file.id
-              );
-
-              setOutput("");
-            }}
-          >
-
-            <span className="file-language-icon">
-              {getFileIcon(
-                file.name
-              )}
-            </span>
-
-            <span className="file-name">
-              {file.name}
-            </span>
-
-            {files.length > 1 && (
-              <button
-                type="button"
-                className="close-file"
-                onClick={(event) => {
-                  event.stopPropagation();
-
-                  closeFile(
-                    file.id
-                  );
-                }}
-                title="Close file"
-              >
-                ×
-              </button>
-            )}
-
-          </div>
-        ))}
-
-
-        <button
-          type="button"
-          className="new-file-button"
-          onClick={() =>
-            setShowNewFile(true)
-          }
-          title="New file"
-        >
-          +
-        </button>
-
-      </div>
-
-
-      {/* INFO BAR */}
-
-      <div className="editor-info-bar">
-
-        <span>
-          {activeFile?.language ||
-            "Plain Text"}
-        </span>
-
-
-        <span className="saved-status">
-
-          <span
-            className={`saved-dot ${
-              saved
-                ? ""
-                : "unsaved"
-            }`}
-          />
-
-          {saved
-            ? "Saved"
-            : "Unsaved changes"}
-
-        </span>
-
-      </div>
-
-
-      {/* EDITOR */}
-
-      <div className="code-editor-body">
-
-        <div className="line-numbers">
-
-          {codeLines.map(
-            (_, index) => (
-              <div
-                key={index}
-                className="line-number"
-              >
-                {index + 1}
-              </div>
-            )
-          )}
-
-        </div>
-
-
-        <textarea
-          ref={textareaRef}
-          className="code-input"
-          value={
-            activeFile?.code || ""
-          }
-          onChange={(event) =>
-            updateFileCode(
-              event.target.value
-            )
-          }
-          onKeyDown={
-            handleEditorKeyDown
-          }
-          spellCheck="false"
-          autoCorrect="off"
-          autoCapitalize="off"
-          placeholder="Write your code here..."
-        />
-
-      </div>
-
-
-      {/* OUTPUT */}
-
-      {output !== "" && (
-        <div className="code-output">
-
-          <div className="output-header">
-
-            <span>
-              Output
-            </span>
-
-            <button
-              type="button"
-              onClick={() =>
-                setOutput("")
-              }
-            >
-              Clear
-            </button>
-
-          </div>
-
-          <pre>
-            {output}
-          </pre>
-
-        </div>
-      )}
-
-
-      {/* FOOTER */}
-
-      <div className="code-editor-footer">
-
-        <div>
-          Ln 1, Col 1
-        </div>
-
-        <div className="footer-right">
-
-          <span>
-            {activeFile?.language ||
-              "Plain Text"}
-          </span>
-
-          <span>
-            UTF-8
-          </span>
-
-          <span>
-            Spaces: 2
-          </span>
-
-        </div>
-
-      </div>
-
-
-      {/* NEW FILE MODAL */}
-
-      {showNewFile && (
-        <div className="new-file-overlay">
-
-          <div className="new-file-modal">
-
-            <h3>
-              Create New File
-            </h3>
-
-            <p>
-              Enter a file name
-              with an extension.
-            </p>
-
-
-            <input
-              type="text"
-              value={newFileName}
-              onChange={(event) =>
-                setNewFileName(
-                  event.target.value
-                )
-              }
-              onKeyDown={(event) => {
-                if (
-                  event.key ===
-                  "Enter"
-                ) {
-                  createNewFile();
-                }
-
-                if (
-                  event.key ===
-                  "Escape"
-                ) {
-                  setShowNewFile(false);
-
-                  setNewFileName("");
-                }
-              }}
-              placeholder="example.js"
-              autoFocus
-            />
-
-
-            {newFileName && (
-              <div className="file-preview">
-
-                <span>
-                  {getFileIcon(
-                    newFileName
-                  )}
-                </span>
-
-                <span>
-                  {getLanguage(
-                    newFileName
-                  )}
-                </span>
-
-              </div>
-            )}
-
-
-            <div className="new-file-actions">
-
-              <button
-                type="button"
-                className="cancel-file-button"
-                onClick={() => {
-                  setShowNewFile(false);
-
-                  setNewFileName("");
-                }}
-              >
-                Cancel
-              </button>
-
-
-              <button
-                type="button"
-                className="create-file-button"
-                onClick={
-                  createNewFile
-                }
-              >
-                Create File
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-      )}
-
-    </div>
-  );
-}
-
 
 /* =========================================================
    MAIN WORKSPACE
    ========================================================= */
 
 function Workspace() {
+  /* =======================================================
+     GET ROOM ID
+     ======================================================= */
+
+  const roomId =
+    decodeURIComponent(
+      window.location.pathname.split(
+        "/room/"
+      )[1] ||
+        "default-room"
+    );
+
+  /* =======================================================
+     COLLABORATIVE ROOM
+     ======================================================= */
+
+  const {
+    shapes,
+    status,
+    socket,
+    peers,
+    awareness,
+    updateAwareness,
+  } = useCollaborativeRoom(
+    roomId
+  );
+
+  /* =======================================================
+     WORKSPACE
+     ======================================================= */
+
   return (
     <section className="workspace">
-
-      {/* WORKSPACE HEADER */}
+      {/* =================================================
+          HEADER
+          ================================================= */}
 
       <div className="workspace-header">
-
         <div>
           <h1>
             Collaborative Workspace
           </h1>
 
           <p>
-            Work together in real time
+            Work together in
+            real time
           </p>
         </div>
 
-
         <div className="workspace-status">
-          <span className="status-dot" />
-          Online
-        </div>
+          <span
+            className={`status-dot ${
+              status ===
+                "connected" ||
+              status ===
+                "synced"
+                ? "online"
+                : ""
+            }`}
+          />
 
+          {status ===
+          "synced"
+            ? "Synced"
+            : status ===
+              "connected"
+            ? "Online"
+            : status ===
+              "connecting"
+            ? "Connecting"
+            : "Offline"}
+        </div>
       </div>
 
-
-      {/* WORKSPACE CONTENT */}
+      {/* =================================================
+          CONTENT
+          ================================================= */}
 
       <div className="workspace-content">
+        {/* =================================================
+            WHITEBOARD
+            ================================================= */}
 
         <div className="panel whiteboard-panel">
-          <Whiteboard />
+          <Whiteboard
+            yShapes={shapes}
+            collaborationStatus={
+              status
+            }
+            awareness={
+              awareness
+            }
+            updateAwareness={
+              updateAwareness
+            }
+          />
         </div>
 
+        {/* =================================================
+            CODE EDITOR
+            ================================================= */}
 
         <div className="panel code-panel">
-          <CodeEditor />
+          <CodeEditor
+            socket={socket}
+            roomId={roomId}
+            peers={peers}
+          />
         </div>
-
       </div>
-
     </section>
   );
 }
-
 
 export default Workspace;

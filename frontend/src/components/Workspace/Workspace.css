@@ -237,6 +237,7 @@
 
   display: flex;
   align-items: center;
+
   gap: 6px;
 
   padding: 0 12px;
@@ -346,24 +347,18 @@
 
 .canvas-message {
   position: absolute;
-
   top: 50%;
   left: 50%;
-
-  transform: translate(-50%, -50%);
-
+  transform:
+    translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   width: 300px;
-
   text-align: center;
-
-  pointer-events: none;
-
-  z-index: 2;
+  pointer-events: auto;
+  z-index: 10;
 }
 
 .canvas-icon {
@@ -407,23 +402,23 @@
   line-height: 1.5;
 }
 
+
+/* =========================================================
+   START DRAWING BUTTON
+   ========================================================= */
+
 .start-drawing-button {
   pointer-events: auto;
-
   padding: 10px 18px;
-
   border: none;
+  position: relative;
+  z-index: 11;
   border-radius: 7px;
-
   background: #111111;
-
   color: #ffffff;
-
   font-size: 13px;
   font-weight: 600;
-
   cursor: pointer;
-
   transition:
     background 0.15s ease,
     transform 0.15s ease;
@@ -495,763 +490,8 @@
   justify-content: center;
 
   font-size: 12px;
+
   color: #555555;
-}
-
-
-/* =========================================================
-   CODE EDITOR
-   ========================================================= */
-
-.code-editor {
-  position: relative;
-
-  display: flex;
-  flex-direction: column;
-
-  width: 100%;
-  height: 620px;
-
-  min-width: 0;
-  min-height: 0;
-
-  overflow: hidden;
-
-  border-radius: 12px;
-
-  background: #171717;
-
-  box-sizing: border-box;
-}
-
-
-/* =========================================================
-   CODE EDITOR HEADER
-   ========================================================= */
-
-.code-editor-header {
-  height: 68px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0 18px;
-
-  box-sizing: border-box;
-
-  border-bottom: 1px solid #dddddd;
-
-  background: #ffffff;
-
-  flex-shrink: 0;
-}
-
-.code-editor-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-
-  min-width: 0;
-}
-
-.editor-icon {
-  width: 34px;
-  height: 34px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  flex-shrink: 0;
-
-  border-radius: 8px;
-
-  background: #f4f4f4;
-
-  color: #111111;
-
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.code-editor-title h2 {
-  margin: 0;
-
-  font-size: 17px;
-  font-weight: 700;
-  line-height: 1.2;
-
-  color: #111111;
-}
-
-.code-editor-title span {
-  display: block;
-
-  margin-top: 3px;
-
-  color: #888888;
-
-  font-size: 12px;
-}
-
-.editor-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  flex-shrink: 0;
-}
-
-.run-button {
-  height: 34px;
-
-  padding: 0 14px;
-
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-
-  border: 1px solid #dddddd;
-  border-radius: 7px;
-
-  background: #ffffff;
-
-  color: #222222;
-
-  font-size: 13px;
-  font-weight: 500;
-
-  cursor: pointer;
-}
-
-.run-button:hover {
-  background: #f5f5f5;
-}
-
-.run-button:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-
-
-/* =========================================================
-   FILE TABS
-   ========================================================= */
-
-.file-tabs {
-  height: 43px;
-
-  display: flex;
-  align-items: stretch;
-
-  flex-shrink: 0;
-
-  overflow-x: auto;
-  overflow-y: hidden;
-
-  background: #151515;
-
-  scrollbar-width: thin;
-}
-
-.file-tab {
-  min-width: 120px;
-  max-width: 180px;
-
-  height: 43px;
-
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  padding: 0 10px;
-
-  box-sizing: border-box;
-
-  border-right: 1px solid #292929;
-
-  color: #888888;
-
-  font-family:
-    "Consolas",
-    "Courier New",
-    monospace;
-
-  font-size: 12px;
-
-  cursor: pointer;
-  user-select: none;
-
-  flex-shrink: 0;
-}
-
-.file-tab:hover {
-  background: #202020;
-  color: #dddddd;
-}
-
-.file-tab.active {
-  background: #1f1f1f;
-  color: #ffffff;
-
-  box-shadow:
-    inset 0 2px 0 #ffffff;
-}
-
-.file-language-icon {
-  min-width: 22px;
-
-  font-size: 9px;
-  font-weight: 700;
-
-  color: #cccccc;
-
-  text-align: center;
-}
-
-.file-name {
-  flex: 1;
-
-  min-width: 0;
-
-  overflow: hidden;
-
-  text-overflow: ellipsis;
-
-  white-space: nowrap;
-}
-
-.close-file {
-  width: 20px;
-  height: 20px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  flex-shrink: 0;
-
-  border: none;
-  border-radius: 4px;
-
-  background: transparent;
-
-  color: #777777;
-
-  font-size: 15px;
-
-  cursor: pointer;
-}
-
-.close-file:hover {
-  background: #333333;
-  color: #ffffff;
-}
-
-.new-file-button {
-  width: 42px;
-  height: 43px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  flex-shrink: 0;
-
-  border: none;
-
-  background: transparent;
-
-  color: #888888;
-
-  font-size: 21px;
-
-  cursor: pointer;
-}
-
-.new-file-button:hover {
-  background: #222222;
-  color: #ffffff;
-}
-
-
-/* =========================================================
-   EDITOR INFO BAR
-   ========================================================= */
-
-.editor-info-bar {
-  height: 34px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0 14px;
-
-  box-sizing: border-box;
-
-  flex-shrink: 0;
-
-  border-bottom: 1px solid #292929;
-
-  background: #191919;
-
-  color: #999999;
-
-  font-size: 11px;
-}
-
-.saved-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.saved-dot {
-  width: 7px;
-  height: 7px;
-
-  border-radius: 50%;
-
-  background: #22c55e;
-}
-
-.saved-dot.unsaved {
-  background: #f59e0b;
-}
-
-
-/* =========================================================
-   CODE AREA
-   ========================================================= */
-
-.code-editor-body {
-  flex: 1;
-
-  min-height: 180px;
-
-  display: flex;
-
-  overflow: hidden;
-
-  background: #171717;
-}
-
-
-/* =========================================================
-   LINE NUMBERS
-   ========================================================= */
-
-.line-numbers {
-  width: 52px;
-
-  flex-shrink: 0;
-
-  padding-top: 18px;
-  padding-right: 12px;
-
-  box-sizing: border-box;
-
-  overflow: hidden;
-
-  background: #171717;
-
-  color: #666666;
-
-  font-family:
-    "Consolas",
-    "Courier New",
-    monospace;
-
-  font-size: 13px;
-
-  line-height: 24px;
-
-  text-align: right;
-
-  user-select: none;
-}
-
-.line-number {
-  height: 24px;
-
-  line-height: 24px;
-
-  white-space: nowrap;
-}
-
-
-/* =========================================================
-   CODE INPUT
-   ========================================================= */
-
-/*
-   IMPORTANT:
-   Line numbers and textarea use the SAME:
-   - font family
-   - font size
-   - line height
-   - top padding
-
-   This keeps the numbers aligned with code.
-*/
-
-.code-input {
-  flex: 1;
-
-  width: 0;
-
-  min-width: 0;
-  min-height: 100%;
-
-  padding: 18px 18px 18px 14px;
-
-  box-sizing: border-box;
-
-  border: none;
-  outline: none;
-
-  resize: none;
-
-  overflow: auto;
-
-  background: #171717;
-
-  color: #f5f5f5;
-
-  font-family:
-    "Consolas",
-    "Courier New",
-    monospace;
-
-  font-size: 13px;
-  font-weight: 400;
-
-  line-height: 24px;
-
-  letter-spacing: 0;
-
-  tab-size: 2;
-
-  white-space: pre;
-
-  caret-color: #ffffff;
-
-  spellcheck: false;
-}
-
-.code-input::placeholder {
-  color: #555555;
-}
-
-.code-input::selection {
-  background: #444444;
-}
-
-
-/* =========================================================
-   OUTPUT
-   ========================================================= */
-
-.code-output {
-  flex-shrink: 0;
-
-  height: 115px;
-
-  display: flex;
-  flex-direction: column;
-
-  background: #101010;
-
-  border-top: 1px solid #292929;
-}
-
-.output-header {
-  height: 32px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0 14px;
-
-  box-sizing: border-box;
-
-  color: #cccccc;
-
-  font-size: 12px;
-
-  border-bottom: 1px solid #292929;
-
-  flex-shrink: 0;
-}
-
-.output-header button {
-  border: none;
-
-  background: transparent;
-
-  color: #777777;
-
-  font-size: 11px;
-
-  cursor: pointer;
-}
-
-.output-header button:hover {
-  color: #ffffff;
-}
-
-.code-output pre {
-  flex: 1;
-
-  margin: 0;
-
-  padding: 10px 14px;
-
-  overflow: auto;
-
-  color: #d4d4d4;
-
-  font-family:
-    "Consolas",
-    "Courier New",
-    monospace;
-
-  font-size: 12px;
-
-  line-height: 18px;
-
-  white-space: pre-wrap;
-}
-
-
-/* =========================================================
-   CODE EDITOR FOOTER
-   ========================================================= */
-
-.code-editor-footer {
-  height: 30px;
-
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  padding: 0 14px;
-
-  box-sizing: border-box;
-
-  flex-shrink: 0;
-
-  background: #111111;
-
-  color: #777777;
-
-  font-family:
-    "Consolas",
-    "Courier New",
-    monospace;
-
-  font-size: 10px;
-}
-
-.footer-right {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-
-/* =========================================================
-   NEW FILE MODAL
-   ========================================================= */
-
-.new-file-overlay {
-  position: absolute;
-
-  inset: 0;
-
-  z-index: 100;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: rgba(0, 0, 0, 0.45);
-}
-
-.new-file-modal {
-  width: 360px;
-  max-width: calc(100% - 40px);
-
-  padding: 24px;
-
-  box-sizing: border-box;
-
-  border-radius: 12px;
-
-  background: #ffffff;
-
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.25);
-}
-
-.new-file-modal h3 {
-  margin: 0 0 8px;
-
-  color: #111111;
-
-  font-size: 18px;
-}
-
-.new-file-modal p {
-  margin: 0 0 18px;
-
-  color: #777777;
-
-  font-size: 13px;
-}
-
-.new-file-modal input {
-  width: 100%;
-  height: 42px;
-
-  padding: 0 12px;
-
-  box-sizing: border-box;
-
-  border: 1px solid #dddddd;
-  border-radius: 7px;
-
-  outline: none;
-
-  color: #111111;
-
-  background: #ffffff;
-
-  font-size: 14px;
-}
-
-.new-file-modal input:focus {
-  border-color: #999999;
-}
-
-
-/* =========================================================
-   FILE PREVIEW
-   ========================================================= */
-
-.file-preview {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-
-  margin-top: 12px;
-
-  padding: 8px 10px;
-
-  border-radius: 6px;
-
-  background: #f5f5f5;
-
-  color: #666666;
-
-  font-size: 12px;
-}
-
-.file-preview span:first-child {
-  font-weight: 700;
-
-  color: #111111;
-}
-
-
-/* =========================================================
-   NEW FILE ACTIONS
-   ========================================================= */
-
-.new-file-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-
-  gap: 10px;
-
-  margin-top: 20px;
-}
-
-.cancel-file-button,
-.create-file-button {
-  padding: 9px 14px;
-
-  border-radius: 7px;
-
-  font-size: 13px;
-
-  cursor: pointer;
-}
-
-.cancel-file-button {
-  border: 1px solid #dddddd;
-
-  background: #ffffff;
-
-  color: #333333;
-}
-
-.cancel-file-button:hover {
-  background: #f5f5f5;
-}
-
-.create-file-button {
-  border: none;
-
-  background: #111111;
-
-  color: #ffffff;
-}
-
-.create-file-button:hover {
-  background: #292929;
-}
-
-
-/* =========================================================
-   SCROLLBARS
-   ========================================================= */
-
-.file-tabs::-webkit-scrollbar {
-  height: 4px;
-}
-
-.file-tabs::-webkit-scrollbar-track {
-  background: #151515;
-}
-
-.file-tabs::-webkit-scrollbar-thumb {
-  background: #444444;
-
-  border-radius: 4px;
-}
-
-.code-input::-webkit-scrollbar,
-.code-output pre::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-.code-input::-webkit-scrollbar-track,
-.code-output pre::-webkit-scrollbar-track {
-  background: #171717;
-}
-
-.code-input::-webkit-scrollbar-thumb,
-.code-output pre::-webkit-scrollbar-thumb {
-  background: #3a3a3a;
-
-  border-radius: 4px;
 }
 
 
@@ -1264,8 +504,7 @@
     grid-template-columns: 1fr;
   }
 
-  .whiteboard,
-  .code-editor {
+  .whiteboard {
     height: 600px;
   }
 }
@@ -1278,7 +517,6 @@
 
   .workspace-header {
     align-items: flex-start;
-
     gap: 12px;
   }
 
@@ -1294,32 +532,202 @@
     gap: 14px;
   }
 
-  .whiteboard,
-  .code-editor {
+  .whiteboard {
     height: 560px;
   }
 
-  .code-editor-header,
   .panel-header {
     padding: 0 12px;
   }
 
-  .code-editor-title span,
   .panel-title span {
     display: none;
   }
+}
 
-  .line-numbers {
-    width: 44px;
+/* =========================================================
+   VIEWPORT HEIGHT FIX
+   Prevent Workspace from creating page-level vertical scroll
+   ========================================================= */
 
-    padding-right: 10px;
+.workspace {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  margin: 0;
+  padding: 0;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   WORKSPACE HEADER
+   ========================================================= */
+
+.workspace-header {
+  flex: 0 0 auto;
+
+  width: 100%;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   WORKSPACE CONTENT
+   ========================================================= */
+
+.workspace-content {
+  flex: 1 1 auto;
+
+  width: 100%;
+  min-height: 0;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+  gap: 20px;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   PANELS
+   ========================================================= */
+
+.workspace-content > .panel {
+  min-width: 0;
+  min-height: 0;
+
+  height: 100%;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   WHITEBOARD PANEL
+   ========================================================= */
+
+.whiteboard-panel {
+  min-width: 0;
+  min-height: 0;
+
+  height: 100%;
+
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* =========================================================
+   CODE PANEL
+   ========================================================= */
+
+.code-panel {
+  min-width: 0;
+  min-height: 0;
+
+  height: 100%;
+
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+  .workspace-content {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
   }
 
-  .code-input {
-    padding-left: 10px;
+  .workspace-content > .panel {
+    min-height: 500px;
+    height: auto;
   }
+}
 
-  .footer-right {
-    gap: 8px;
-  }
+/* =========================================================
+   SYNCSPACE MODERN ROOM OVERRIDES
+   ========================================================= */
+.workspace{min-height:0;padding:0;background:#0f1013;color:#f4f4f6}
+.workspace-content{gap:10px}
+.panel{border-color:#292b32;border-radius:10px;background:#0f1013}
+.whiteboard{background:#0f1013}
+.panel-header{height:54px;padding:0 14px;border-bottom-color:#292b32;background:#0f1013}
+.panel-title{gap:9px}.panel-icon{width:28px;height:28px;border-radius:7px;background:#17191e;color:#8b6cff;font-size:14px}
+.panel-title h2{font:600 12px "Space Grotesk",sans-serif;color:#e3e4e8;letter-spacing:.01em}.panel-title span{font:9px "JetBrains Mono",monospace;color:#626671;margin-top:2px}
+.panel-menu{color:#666a75}.panel-menu:hover{background:#1a1c21;color:#fff}
+.whiteboard-toolbar{height:42px;gap:4px;padding:0 10px;border-bottom-color:#292b32;background:#101114}
+.tool-button{width:30px;height:30px;border-radius:6px;color:#777b86;font-size:13px}.tool-button:hover{background:#1c1e24;color:#ddd}.tool-button.active{background:#7c5cff;color:#fff}
+.toolbar-divider{height:20px;background:#292b32;margin:0 7px}
+.whiteboard-canvas-container{background-color:#0f1013;background-image:linear-gradient(#1a1c21 1px,transparent 1px),linear-gradient(90deg,#1a1c21 1px,transparent 1px);background-size:24px 24px}
+.canvas-message{width:280px}.canvas-icon{width:42px;height:42px;background:#15171c;border-color:#2a2c33;color:#8b6cff;box-shadow:none}.canvas-message h3{color:#e1e2e6;font:600 15px "Space Grotesk",sans-serif}.canvas-message p{color:#666a75;font:10px/1.6 Inter,sans-serif}.start-drawing-button{background:#7c5cff;border-radius:7px;font-size:11px}.start-drawing-button:hover{background:#8b6cff}
+.zoom-controls{right:12px;bottom:12px;border-color:#2c2e35;background:#15171c;box-shadow:0 10px 25px rgba(0,0,0,.25)}.zoom-controls button{background:#15171c;color:#818590;border-color:#2a2c33}.zoom-controls button:hover{background:#1e2026;color:#fff}.zoom-controls .zoom-value{color:#8e919b}
+
+
+/* =========================================================
+   COLLABORATION STATUS
+   ========================================================= */
+
+.canvas-sync-status {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 5;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  padding: 6px 9px;
+
+  border: 1px solid #26262b;
+  border-radius: 999px;
+
+  background: rgba(18, 18, 20, 0.86);
+
+  color: #a7a7b0;
+
+  font: 500 11px/1.2 "JetBrains Mono",
+    monospace;
+
+  backdrop-filter: blur(8px);
+}
+
+.canvas-sync-status .status-dot {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 50%;
+
+  background: #71717a;
+}
+
+.canvas-sync-status .status-dot.online {
+  background: #22d3b5;
+
+  box-shadow:
+    0 0 10px
+    rgba(34, 211, 181, 0.45);
 }
