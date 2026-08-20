@@ -1,11 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io } from "socket.io-client";
+import * as Y from "yjs";
 
 import "./CodeEditor.css";
 
@@ -284,6 +279,11 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
      REMOTE CURSORS
      ======================================================= */
 
+  const ydocRef = useRef(null);
+  const ytextRef = useRef(null);
+  const applyingRemoteUpdateRef = useRef(false);
+
+
   const [remoteCursors, setRemoteCursors] = useState({});
 
   const [remoteCursorPositions, setRemoteCursorPositions] = useState({});
@@ -398,6 +398,48 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       console.error("Failed to save Code Editor data:", error);
     }
   }, [files, activeFileId]);
+  /* =======================================================
+     UPDATE FILE CODE
+     ======================================================= */
+
+  const updateFileCode = useCallback(
+    (newCode) => {
+      // Always update the local React state
+      setFiles((currentFiles) =>
+        currentFiles.map((file) =>
+          file.id === activeFileId
+            ? {
+                ...file,
+                code: newCode,
+              }
+            : file,
+        ),
+      );
+
+      // Do not create a new Yjs update while applying
+      // a change received from another user.
+      if (!ydocRef.current || applyingRemoteUpdateRef.current) {
+        return;
+      }
+
+      const yfiles = ydocRef.current.getMap("files");
+
+      let ytext = yfiles.get(activeFileId);
+
+      if (!ytext) {
+        ytext = new Y.Text();
+
+        yfiles.set(activeFileId, ytext);
+      }
+
+      // Replace the shared text with the latest editor content.
+      ydocRef.current.transact(() => {
+        ytext.delete(0, ytext.length);
+        ytext.insert(0, newCode);
+      }, "local");
+    },
+    [activeFileId],
+  );
 
     /* =======================================================
      COLLABORATIVE CODE SYNC
@@ -1373,6 +1415,21 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
 
     setFiles((currentFiles) => [...currentFiles, duplicatedFile]);
 
+    if (ydocRef.current) {
+      const yfiles = ydocRef.current.getMap("files");
+      const yfileMeta = ydocRef.current.getMap("fileMeta");
+
+      ydocRef.current.transact(() => {
+        const ytext = new Y.Text();
+        ytext.insert(0, duplicatedFile.code || "");
+        yfiles.set(duplicatedFile.id, ytext);
+        yfileMeta.set(duplicatedFile.id, {
+          name: duplicatedFile.name,
+          language: duplicatedFile.language,
+        });
+      }, "local");
+    }
+
     setActiveFileId(duplicatedFile.id);
 
     setOutput([]);
@@ -1426,6 +1483,16 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     );
 
     setFiles(remainingFiles);
+
+    if (ydocRef.current) {
+      const yfiles = ydocRef.current.getMap("files");
+      const yfileMeta = ydocRef.current.getMap("fileMeta");
+
+      ydocRef.current.transact(() => {
+        yfiles.delete(filePendingDelete);
+        yfileMeta.delete(filePendingDelete);
+      }, "local");
+    }
 
     if (filePendingDelete === activeFileId) {
       const nextIndex = Math.min(
@@ -1508,10 +1575,19 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
         return;
       }
 
-      performCloseFile(fileId);
-    },
-    [files, performCloseFile],
-  );
+    if (ydocRef.current) {
+      const yfileMeta = ydocRef.current.getMap("fileMeta");
+
+      ydocRef.current.transact(() => {
+        yfileMeta.set(activeFile.id, {
+          name: trimmedName,
+          language: newLanguage,
+        });
+      }, "local");
+    }
+
+    closeRenameModal();
+  }, [activeFile, renameFileName, files, closeRenameModal]);
 
   /* =======================================================
      CANCEL CLOSE
@@ -1532,12 +1608,29 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       return;
     }
 
-    performCloseFile(filePendingClose);
-  }, [filePendingClose, performCloseFile]);
+    /* Add file locally */
+    setFiles((currentFiles) => [...currentFiles, newFile]);
 
-  /* =======================================================
-     SAVE AND CLOSE
-     ======================================================= */
+    /* Add file to the shared Yjs document */
+    if (ydocRef.current) {
+      const yfiles = ydocRef.current.getMap("files");
+      const yfileMeta = ydocRef.current.getMap("fileMeta");
+
+      ydocRef.current.transact(() => {
+        const ytext = new Y.Text();
+        ytext.insert(0, "");
+        yfiles.set(newFile.id, ytext);
+
+        yfileMeta.set(newFile.id, {
+          name: newFile.name,
+          language: newFile.language,
+        });
+      }, "local");
+
+      console.log("New file added to shared Yjs:", newFile.name);
+    }
+
+    setActiveFileId(newFile.id);
 
   const saveAndCloseFile = useCallback(() => {
     if (!filePendingClose) {
@@ -2203,8 +2296,261 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     setOutput([]);
   }, []);
 
+  useEffect(() => {
+    const socket = io("http://localhost:5000");
+
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("Connected to SyncSpace:", socket.id);
+
+      socket.emit("join-room", roomId);
+
+      socket.emit("awareness-update", {
+        roomId,
+        awareness: {
+          userId,
+          userColor,
+          line: cursorPosition.line,
+          column: cursorPosition.column,
+          fileId: activeFileId,
+        },
+      });
+
+      // Ask the server for the current Yjs state.
+      socket.emit("yjs-sync-request", roomId);
+    });
+
+    // ==============================
+    // TASK 2: REMOTE CURSOR
+    // ==============================
+
+    socket.on("awareness-update", ({ socketId, awareness }) => {
+      if (socketId === socket.id) {
+        return;
+      }
+
+      setRemoteCursors((current) => ({
+        ...current,
+        [socketId]: awareness,
+      }));
+    });
+
+    socket.on("awareness-remove", ({ socketId }) => {
+      setRemoteCursors((current) => {
+        const updated = { ...current };
+        delete updated[socketId];
+        return updated;
+      });
+    });
+
+    return () => {
+      socket.emit("awareness-remove", { roomId });
+      socket.emit("leave-room", roomId);
+
+      socket.off("awareness-update");
+      socket.off("awareness-remove");
+
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [roomId]);
+
   /* =======================================================
-     GLOBAL SAVE
+     TASK 3: YJS REAL-TIME SYNCHRONIZATION
+     ======================================================= */
+
+  useEffect(() => {
+    const socket = socketRef.current;
+
+    if (!socket) {
+      return;
+    }
+
+    const ydoc = new Y.Doc();
+    const yfiles = ydoc.getMap("files");
+    const yfileMeta = ydoc.getMap("fileMeta");
+
+    ydocRef.current = ydoc;
+
+    // Send local Yjs changes to the server.
+    const handleYjsUpdate = (update, origin) => {
+      if (origin !== "local") {
+        return;
+      }
+
+      socket.emit("yjs-update", {
+        roomId,
+        update: Array.from(update),
+      });
+    };
+
+    // Convert the complete Yjs file state into the React file state.
+    // This also creates tabs for files that were created by another user.
+    const syncFilesFromYjs = (markAsSaved = false) => {
+      setFiles((currentFiles) => {
+        const sharedIds = Array.from(yfiles.keys());
+        const sharedIdSet = new Set(sharedIds);
+
+        // Keep the existing local tab order for files that still exist,
+        // then append files that arrived from another user.
+        const orderedIds = [
+          ...currentFiles
+            .filter((file) => sharedIdSet.has(file.id))
+            .map((file) => file.id),
+          ...sharedIds.filter(
+            (fileId) => !currentFiles.some((file) => file.id === fileId),
+          ),
+        ];
+
+        return orderedIds.map((fileId) => {
+          const ytext = yfiles.get(fileId);
+          const currentFile = currentFiles.find((file) => file.id === fileId);
+          const rawMetadata = yfileMeta.get(fileId);
+          let metadata = rawMetadata || {};
+
+          if (typeof rawMetadata === "string") {
+            try {
+              metadata = JSON.parse(rawMetadata);
+            } catch {
+              metadata = {};
+            }
+          }
+
+          const name = metadata.name || currentFile?.name || fileId;
+          const language =
+            metadata.language ||
+            currentFile?.language ||
+            getLanguageFromFileName(name);
+
+          const code = ytext instanceof Y.Text ? ytext.toString() : "";
+
+          return {
+            id: fileId,
+            name,
+            language,
+            code,
+            savedCode: markAsSaved
+              ? code
+              : currentFile?.savedCode ?? code,
+          };
+        });
+      });
+    };
+
+    // Receive the current document state from the server.
+    const handleInitialSync = ({ roomId: syncedRoomId, update }) => {
+      if (syncedRoomId !== roomId) {
+        return;
+      }
+
+      try {
+        const bytes = new Uint8Array(update || []);
+        Y.applyUpdate(ydoc, bytes, "remote");
+
+        /*
+         * If this is a brand-new room, the server has no Yjs files yet.
+         * Seed the shared document with the current local files once.
+         */
+        if (yfiles.size === 0) {
+          const currentFiles = files;
+
+          ydoc.transact(() => {
+            currentFiles.forEach((file) => {
+              const ytext = new Y.Text();
+              ytext.insert(0, file.code || "");
+              yfiles.set(file.id, ytext);
+
+              yfileMeta.set(file.id, {
+                name: file.name,
+                language: file.language,
+              });
+            });
+          }, "local");
+
+          console.log("Yjs room was empty; local files seeded.");
+        } else {
+          /*
+           * Older rooms may contain Yjs text without metadata.
+           * Add metadata for files that this browser already knows.
+           */
+          ydoc.transact(() => {
+            files.forEach((file) => {
+              if (yfiles.has(file.id) && !yfileMeta.has(file.id)) {
+                yfileMeta.set(file.id, {
+                  name: file.name,
+                  language: file.language,
+                });
+              }
+            });
+          }, "local");
+
+          syncFilesFromYjs(true);
+          console.log("Yjs initial state synchronized.");
+        }
+      } catch (error) {
+        console.error("Yjs initial sync failed:", error);
+      }
+    };
+
+    // Receive changes made by other users.
+    const handleRemoteUpdate = ({
+      roomId: updatedRoomId,
+      update,
+    }) => {
+      if (updatedRoomId !== roomId) {
+        return;
+      }
+
+      try {
+        applyingRemoteUpdateRef.current = true;
+
+        Y.applyUpdate(ydoc, new Uint8Array(update || []), "remote");
+
+        // Rebuild the complete file list so newly created files appear
+        // as tabs in every connected browser.
+        syncFilesFromYjs(false);
+
+        console.log("Yjs remote update received.");
+      } catch (error) {
+        console.error("Yjs remote update failed:", error);
+      } finally {
+        applyingRemoteUpdateRef.current = false;
+      }
+    };
+
+    ydoc.on("update", handleYjsUpdate);
+
+    socket.on("yjs-sync", handleInitialSync);
+    socket.on("yjs-update", handleRemoteUpdate);
+
+    /*
+     * Socket.IO may already be connected when this effect runs.
+     * In that case request the state now. Otherwise the connect
+     * handler in the socket effect will request it.
+     */
+    if (socket.connected) {
+      socket.emit("yjs-sync-request", roomId);
+    }
+
+    return () => {
+      ydoc.off("update", handleYjsUpdate);
+
+      socket.off("yjs-sync", handleInitialSync);
+      socket.off("yjs-update", handleRemoteUpdate);
+
+      ydoc.destroy();
+
+      if (ydocRef.current === ydoc) {
+        ydocRef.current = null;
+      }
+
+      ytextRef.current = null;
+    };
+  }, [roomId]);
+
+  /* =======================================================
+     GLOBAL CTRL + S
      ======================================================= */
 
   useEffect(() => {
@@ -2446,35 +2792,90 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
         </div>
 
         <div className="editor-textarea-wrapper">
-          {/* =================================================
-              REMOTE CURSORS
-              ================================================= */}
+          {/* Remote user cursors */}
+          {Object.entries(remoteCursors)
+            .filter(([, awareness]) => awareness.fileId === activeFileId)
+            .map(([socketId, awareness]) => {
+              const textarea = textareaRef.current;
 
-          {Object.entries(remoteCursorPositions).map(([socketId, cursor]) => (
-            <div
-              key={socketId}
-              className="remote-cursor-indicator"
-              style={{
-                top: `${cursor.top}px`,
-                left: `${cursor.left}px`,
-                borderLeft: `2px solid ${cursor.userColor || "#ff4d4d"}`,
-              }}
-            >
-              <span
-                className="remote-cursor-label"
-                style={{
-                  backgroundColor: cursor.userColor || "#ff4d4d",
-                }}
-              >
-                {cursor.userId || "User"}
-              </span>
-            </div>
-          ))}
+              if (!textarea) {
+                return null;
+              }
 
-          {/* =================================================
-              SYNTAX HIGHLIGHT
-              ================================================= */}
+              const styles = window.getComputedStyle(textarea);
 
+              const lineHeight =
+                parseFloat(styles.lineHeight) ||
+                parseFloat(styles.fontSize) ||
+                14;
+
+              const paddingTop = parseFloat(styles.paddingTop) || 0;
+              const paddingLeft = parseFloat(styles.paddingLeft) || 0;
+
+              // Awareness positions are 1-based:
+              // line 1 / column 1 = before the first character.
+              const line = Math.max(1, Number(awareness.line) || 1);
+              const column = Math.max(1, Number(awareness.column) || 1);
+
+              const codeLines = activeFile.code.split("\n");
+              const currentLine = codeLines[line - 1] || "";
+
+              // Convert the 1-based cursor column into a character
+              // offset. For example:
+              // column 1 -> 0 characters before cursor
+              // column 2 -> 1 character before cursor
+              const characterOffset = Math.min(
+                Math.max(0, column - 1),
+                currentLine.length,
+              );
+
+              const textBeforeCursor = currentLine.slice(0, characterOffset);
+
+              // Use the exact font settings of the textarea instead of
+              // assuming that every character is a fixed number of pixels.
+              const canvas = document.createElement("canvas");
+              const context = canvas.getContext("2d");
+
+              let textWidth = 0;
+
+              if (context) {
+                context.font = [
+                  styles.fontStyle,
+                  styles.fontVariant,
+                  styles.fontWeight,
+                  styles.fontSize,
+                  styles.fontFamily,
+                ].join(" ");
+
+                textWidth = context.measureText(textBeforeCursor).width;
+              }
+
+              const top =
+                paddingTop + (line - 1) * lineHeight - editorScroll.top;
+
+              const left = paddingLeft + textWidth - editorScroll.left;
+
+              return (
+                <div
+                  key={socketId}
+                  className="remote-cursor-indicator"
+                  style={{
+                    top: `${top}px`,
+                    left: `${left}px`,
+                    borderLeft: `2px solid ${awareness.userColor || "#ff4d4d"}`,
+                  }}
+                >
+                  <span
+                    className="remote-cursor-label"
+                    style={{
+                      backgroundColor: awareness.userColor || "#ff4d4d",
+                    }}
+                  >
+                    {awareness.userId || "User"}
+                  </span>
+                </div>
+              );
+            })}
           <pre
             className="code-highlight"
             aria-hidden="true"
@@ -2796,19 +3197,6 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       </div>
     </div>
   );
-}
-
-/* =========================================================
-   HTML ESCAPE
-   ========================================================= */
-
-function escapeHtml(value) {
-  return String(value)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
 }
 
 export default CodeEditor;
