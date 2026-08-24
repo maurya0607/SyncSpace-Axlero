@@ -1789,3 +1789,186 @@
 .code-input::-webkit-scrollbar-thumb:hover {
   background: #4a4a4a;
 }
+
+/* =========================================================
+   WEEK 4 REPLAY
+   Append this block to the END of CodeEditor.css.
+   ========================================================= */
+
+.replay-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid #303030;
+  border-radius: 7px;
+  background: #171717;
+  color: #d7d7d7;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replay-button:hover {
+  background: #202020;
+  border-color: #444;
+}
+
+.replay-preview-status {
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.14);
+  color: #a78bfa;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.replay-panel {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 104px;
+  background: #101010;
+  border-top: 1px solid #292929;
+  box-sizing: border-box;
+  padding: 10px 12px 9px;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.replay-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.replay-panel-header > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.replay-panel-header strong {
+  color: #e8e8e8;
+  font-size: 11px;
+}
+
+.replay-panel-header span {
+  color: #777;
+  font-size: 9px;
+}
+
+.replay-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.replay-panel-actions button {
+  min-width: 28px;
+  height: 25px;
+  padding: 0 7px;
+  border: 1px solid #303030;
+  border-radius: 5px;
+  background: #171717;
+  color: #cfcfcf;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.replay-panel-actions button:hover:not(:disabled) {
+  background: #222;
+}
+
+.replay-panel-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.replay-timeline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 31px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.replay-point {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 27px;
+  padding: 0;
+  border: 1px solid #2d2d2d;
+  border-radius: 5px;
+  background: #151515;
+  color: #777;
+  font-size: 8px;
+  cursor: pointer;
+}
+
+.replay-point:hover {
+  border-color: #4b4b4b;
+  color: #bbb;
+}
+
+.replay-point.active {
+  border-color: #7c3aed;
+  background: rgba(124, 58, 237, 0.14);
+  color: #c4b5fd;
+}
+
+.replay-point-dot {
+  position: absolute;
+  top: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.replay-point span:last-child {
+  margin-top: 8px;
+}
+
+.replay-empty {
+  color: #666;
+  font-size: 9px;
+}
+
+.replay-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 7px;
+  color: #666;
+  font-size: 9px;
+}
+
+@media (max-width: 700px) {
+  .replay-button {
+    padding: 0 8px;
+  }
+
+  .replay-button {
+    font-size: 0;
+  }
+
+  .replay-button::before {
+    content: "↺";
+    font-size: 13px;
+  }
+
+  .replay-details {
+    gap: 7px;
+  }
+}
