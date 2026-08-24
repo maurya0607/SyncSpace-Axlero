@@ -1,11 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io } from "socket.io-client";
+import * as Y from "yjs";
 
 import Prism from "prismjs";
 import "prismjs/components/prism-javascript";
@@ -46,13 +41,6 @@ const DEFAULT_FILES = [
     savedCode: `function hello() {
   console.log("Hello SyncSpace!");
 }`,
-  },
-  {
-    id: "test-js",
-    name: "test.js",
-    language: "JavaScript",
-    code: `console.log("Hello from SyncSpace!");`,
-    savedCode: `console.log("Hello from SyncSpace!");`,
   },
 ];
 
@@ -217,9 +205,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     normalizeFiles(storedData?.files || DEFAULT_FILES),
   );
 
-  /* =======================================================
-     ACTIVE FILE
-     ======================================================= */
+    return storedData?.files?.length ? storedData.files : DEFAULT_FILES;
+  });
 
   const [activeFileId, setActiveFileId] = useState(() => {
     const storedId = storedData?.activeFileId;
@@ -228,7 +215,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       Array.isArray(storedData?.files) &&
       storedData.files.some((file) => file.id === storedId)
     ) {
-      return storedId;
+      return storedData.activeFileId;
     }
     return DEFAULT_FILES[0].id;
   });
@@ -347,7 +334,6 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
 
     return Prism.highlight(activeFile.code, grammar, language);
   }, [activeFile]);
-
   /* =======================================================
      SAVE TO LOCAL STORAGE
      ======================================================= */
@@ -961,12 +947,12 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       ),
     );
 
-    closeRenameModal();
-  }, [activeFile, renameFileName, files, closeRenameModal]);
+    performCloseFile(filePendingClose);
+  }, [filePendingClose, performCloseFile]);
 
   /* =======================================================
-     DUPLICATE FILE
-     ======================================================= */
+   DUPLICATE CURRENT FILE
+   ======================================================= */
 
   const duplicateCurrentFile = useCallback(() => {
     if (!activeFile) return;
@@ -1068,10 +1054,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
         return;
       }
 
-      performCloseFile(fileId);
-    },
-    [files, performCloseFile],
-  );
+    closeRenameModal();
+  }, [activeFile, renameFileName, files, closeRenameModal]);
 
   const cancelCloseFile = useCallback(() => {
     setFilePendingClose(null);
@@ -1093,8 +1077,49 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       ),
     );
 
-    performCloseFile(filePendingClose);
-  }, [filePendingClose, performCloseFile]);
+    const newFile = {
+      id: `${trimmedName}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: trimmedName,
+      language,
+      code: "",
+      savedCode: "",
+    };
+
+    setFiles((currentFiles) => [...currentFiles, newFile]);
+    setActiveFileId(newFile.id);
+
+    /*
+     * TASK 3: create the file in the shared Yjs document.
+     * This is the part that was missing in the previous version.
+     */
+    if (ydocRef.current) {
+      const yfiles = ydocRef.current.getMap("files");
+      const ymeta = ydocRef.current.getMap("fileMeta");
+      const yorder = ydocRef.current.getArray("fileOrder");
+
+      ydocRef.current.transact(() => {
+        yfiles.set(newFile.id, new Y.Text());
+
+        ymeta.set(
+          newFile.id,
+          JSON.stringify({
+            name: newFile.name,
+            language: newFile.language,
+          }),
+        );
+
+        yorder.push([newFile.id]);
+      }, "local");
+    }
+
+    setNewFileName("");
+    setShowNewFileModal(false);
+    setOutput([]);
+
+    requestAnimationFrame(() => {
+      textareaRef.current?.focus();
+    });
+  }, [files, newFileName]);
 
   /* =========================================================
      EDITOR INPUT
@@ -1128,6 +1153,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       highlight.scrollLeft = textarea.scrollLeft;
     }
 
+    // The remote cursor is an overlay, so it must use the same
+    // scroll offsets as the textarea.
     setEditorScroll({
       top: textarea.scrollTop,
       left: textarea.scrollLeft,
@@ -1253,8 +1280,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           updateCursorPosition(textareaRef.current);
         });
 
-        return;
-      }
+              textareaRef.current.selectionStart = newSelectionStart;
 
       if (event.key === "Tab") {
         event.preventDefault();
@@ -1350,6 +1376,10 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           value.slice(0, start) + inserted + value.slice(end),
         );
 
+        /* -----------------------------------------------
+         Restore cursor
+         ----------------------------------------------- */
+
         requestAnimationFrame(() => {
           if (!textareaRef.current) return;
           const position = start + inserted.length;
@@ -1357,6 +1387,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           textareaRef.current.selectionEnd = position;
           updateCursorPosition(textareaRef.current);
         });
+
+        return;
       }
     },
     [
@@ -1381,7 +1413,6 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     const logs = [];
     const originalLog = console.log;
 
-    try {
       console.log = (...args) => {
         logs.push(
           args
@@ -1406,8 +1437,6 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     } finally {
       console.log = originalLog;
     }
-
-    setOutput(logs.length ? logs : ["Code executed successfully."]);
   }, [activeFile]);
 
   /* =======================================================
@@ -1417,11 +1446,13 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
   const runCode = useCallback(() => {
     if (!activeFile) return;
 
+    /* JavaScript */
     if (activeFile.language === "JavaScript") {
       runJavaScript();
       return;
     }
 
+    /* JSON */
     if (activeFile.language === "JSON") {
       try {
         JSON.parse(activeFile.code);
@@ -1597,6 +1628,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           );
         })}
 
+        {/* NEW FILE BUTTON */}
+
         <button
           type="button"
           className="new-tab-button"
@@ -1629,6 +1662,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           ================================================= */}
 
       <div className="code-area">
+        {/* LINE NUMBERS */}
+
         <div ref={lineNumbersRef} className="line-numbers">
           {lineNumbers.map((number) => (
             <div key={number} className="line-number">
@@ -1636,6 +1671,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
             </div>
           ))}
         </div>
+
+        {/* TEXT EDITOR */}
 
         <div className="editor-textarea-wrapper">
           {Object.entries(remoteCursorPositions).map(([socketId, cursor]) => (
@@ -1796,6 +1833,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
             className="new-file-modal"
             onMouseDown={(event) => event.stopPropagation()}
           >
+            {/* MODAL HEADER */}
+
             <div className="new-file-modal-header">
               <h3>Create New File</h3>
               <button type="button" className="new-file-modal-close" onClick={closeNewFileModal}>
@@ -1813,7 +1852,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
                   if (event.key === "Enter") createNewFile();
                   if (event.key === "Escape") closeNewFileModal();
                 }}
-                placeholder="example.js"
+                placeholder="e.g. app.py"
                 autoFocus
                 spellCheck={false}
               />
@@ -1846,6 +1885,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
             className="new-file-modal"
             onMouseDown={(event) => event.stopPropagation()}
           >
+            {/* MODAL HEADER */}
+
             <div className="new-file-modal-header">
               <h3>Rename File</h3>
               <button type="button" className="new-file-modal-close" onClick={closeRenameModal}>
@@ -1885,8 +1926,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       )}
 
       {/* =================================================
-          UNSAVED CHANGES MODAL
-          ================================================= */}
+    UNSAVED CHANGES MODAL
+    ================================================= */}
 
       {showUnsavedModal && (
         <div className="new-file-modal-overlay" onMouseDown={cancelCloseFile}>
@@ -1894,6 +1935,8 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
             className="new-file-modal"
             onMouseDown={(event) => event.stopPropagation()}
           >
+            {/* MODAL HEADER */}
+
             <div className="new-file-modal-header">
               <h3>Unsaved Changes</h3>
               <button type="button" className="new-file-modal-close" onClick={cancelCloseFile}>

@@ -1,3 +1,10 @@
+const Room = require("./models/Room");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db");
+
+dotenv.config();
+connectDB();
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -71,18 +78,21 @@ app.get("/", (req, res) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  /* =======================================================
-     JOIN ROOM
-     ======================================================= */
-
-  socket.on("join-room", (roomId) => {
-    if (!roomId) {
-      return;
-    }
-
+  // ===========================
+  // Join Room
+  // ===========================
+  socket.on("join-room", async (roomId) => {
     socket.join(roomId);
 
     addUser(roomId, socket.id);
+    await Room.findOneAndUpdate(
+  { roomId },
+  {
+    roomId,
+    activeUsers: getUsers(roomId).length,
+  },
+  { upsert: true, new: true }
+);
 
     console.log(`${socket.id} joined room: ${roomId}`);
 
@@ -102,18 +112,19 @@ io.on("connection", (socket) => {
     });
   });
 
-  /* =======================================================
-     LEAVE ROOM
-     ======================================================= */
-
-  socket.on("leave-room", (roomId) => {
-    if (!roomId) {
-      return;
-    }
-
+  // ===========================
+  // Leave Room
+  // ===========================
+  socket.on("leave-room", async (roomId) => {
     socket.leave(roomId);
 
     removeUser(roomId, socket.id);
+    await Room.findOneAndUpdate(
+  { roomId },
+  {
+    activeUsers: getUsers(roomId).length,
+  }
+);
 
     /*
      * Allow this socket to receive initial state again
@@ -546,11 +557,8 @@ io.on("connection", (socket) => {
 const PORT =
   process.env.PORT || 3001;
 
-server.listen(
-  PORT,
-  () => {
-    console.log(
-      `SyncSpace server running on http://localhost:${PORT}`
-    );
-  }
-);
+connectDB().then(() => {
+    server.listen(PORT, () => {
+        console.log(`SyncSpace server running on port ${PORT}`);
+    });
+});
