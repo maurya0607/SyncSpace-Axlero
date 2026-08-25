@@ -1,9 +1,12 @@
+
 const Room = require("./models/Room");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
-
+const authRoutes = require("./routes/auth");
+const roomRoutes = require("./routes/room");
+const jwt = require("jsonwebtoken");
 dotenv.config();
-connectDB();
+
 
 const express = require("express");
 const http = require("http");
@@ -27,6 +30,9 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/auth", authRoutes);
+
+app.use("/api/rooms", roomRoutes);
 
 const server = http.createServer(app);
 
@@ -41,33 +47,99 @@ app.get("/", (req, res) => {
   res.send("SyncSpace Backend is running");
 });
 
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+      return next(
+        new Error("Authentication token required")
+      );
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    socket.user = decoded;
+
+    next();
+  } catch (error) {
+    next(new Error("Invalid or expired token"));
+  }
+});
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
   // ===========================
   // Join Room
   // ===========================
-  socket.on("join-room", async (roomId) => {
+   socket.on("join-room", async (roomId) => {
+  try {
+    // User must be authenticated
+    if (!socket.user) {
+      socket.emit("join-error", {
+        message: "Authentication required",
+      });
+      return;
+    }
+
+    const room = await Room.findOne({ roomId });
+
+    if (!room) {
+      socket.emit("join-error", {
+        message: "Room not found",
+      });
+      return;
+    }
+
+    // Check whether the user is invited
+    const isInvited = room.invitedUsers.some(
+      (userId) => userId.toString() === socket.user.userId
+    );
+
+    if (!isInvited) {
+      socket.emit("join-error", {
+        message: "You are not invited to this room",
+      });
+      return;
+    }
+
+    // User is authorized → join room
     socket.join(roomId);
 
     addUser(roomId, socket.id);
+
     await Room.findOneAndUpdate(
-  { roomId },
-  {
-    roomId,
-    activeUsers: getUsers(roomId).length,
-  },
-  { upsert: true, new: true }
-);
+      { roomId },
+      {
+        activeUsers: getUsers(roomId).length,
+      },
+      { upsert: true, new: true }
+    );
 
-    console.log(`${socket.id} joined room: ${roomId}`);
+    console.log(
+      `${socket.user.username} (${socket.id}) joined room: ${roomId}`
+    );
 
-    io.to(roomId).emit("users-in-room", getUsers(roomId));
+    io.to(roomId).emit(
+      "users-in-room",
+      getUsers(roomId)
+    );
 
     socket.to(roomId).emit("user-joined", {
       socketId: socket.id,
     });
-  });
+
+  } catch (error) {
+    console.error("Join room error:", error);
+
+    socket.emit("join-error", {
+      message: "Unable to join room",
+    });
+  }
+});
 
   // ===========================
   // Leave Room
