@@ -151,20 +151,55 @@ SyncSpace-Axlero/
 - Deployment pending.
 
 
-## next day ********************
+## *******************************************************************
+# Project Structure
 
+## Current Project Structure
+
+```text
 SyncSpace-Axlero/
 │
 ├── backend/
-│   ├── config/
-│   ├── models/
+│   ├── services/
+│   │   └── presence.js
+│   │
 │   ├── yjs/
-│   ├── node_modules/
-│   ├── .env.example
+│   │   └── yjsManager.js
+│   │
+│   ├── .env
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── server.js
 │   └── test-yjs.js
+│
+├── frontend/
+│   ├── public/
+│   │
+│   ├── src/
+│   │   ├── assets/
+│   │   │
+│   │   ├── components/
+│   │   │   ├── Navbar/
+│   │   │   ├── Sidebar/
+│   │   │   └── Workspace/
+│   │   │
+│   │   ├── lib/
+│   │   │   └── useCollaborativeRoom...
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── LandingPage.jsx
+│   │   │   ├── LandingPage.css
+│   │   │   ├── RoomPage.jsx
+│   │   │   └── RoomPage.css
+│   │   │
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   │
+│   ├── .gitignore
+│   ├── eslint.config.js
+│   └── index.html
 │
 ├── docs/
 │   ├── API_Testing.md
@@ -172,24 +207,52 @@ SyncSpace-Axlero/
 │   ├── Deployment.md
 │   └── Project_Structure.md
 │
-├── frontend/
-│   ├── node_modules/
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── components/
-│   │   │   ├── Navbar/
-│   │   │   ├── Sidebar/
-│   │   │   └── Workspace/
-│   │   ├── pages/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   ├── index.css
-│   │   └── main.jsx
-│   ├── .gitignore
-│   ├── eslint.config.js
-│   └── index.html
-│
 ├── LICENSE
 └── README.md
+```
 
+## Description
+
+### Frontend
+
+* Built using React and Vite.
+* Landing Page and Room Page have been implemented.
+* Navbar, Sidebar, and Workspace components are available.
+* Collaborative room functionality is being integrated.
+* Frontend is structured into reusable components and pages.
+
+### Backend
+
+* Express.js server setup is completed.
+* Socket.io is integrated for real-time communication.
+* Room creation and room joining functionality is implemented.
+* Room-based communication is supported.
+* Presence system is implemented for tracking connected users.
+* Yjs integration has been added for real-time collaborative data synchronization.
+* Yjs document state can be created and sent to connected clients.
+* Awareness updates are being handled for collaborative presence.
+* Code state synchronization is being tested.
+
+### Documentation
+
+* Database planning and documentation are maintained in `Database.md`.
+* API and backend testing details are maintained in `API_Testing.md`.
+* Deployment information is maintained in `Deployment.md`.
+* Project structure is documented in this file.
+
+## Current Status
+
+* Frontend basic layout completed.
+* Landing Page and Room Page implemented.
+* Backend server setup completed.
+* Socket.io real-time communication integrated.
+* Room join and communication functionality implemented.
+* Presence system implemented.
+* Yjs integration added.
+* Yjs document creation and state synchronization tested successfully.
+* Awareness update handling tested successfully.
+* Code state synchronization tested successfully.
+* Database persistence is pending.
+* Authentication and room access control are pending.
+* Multi-client real-time synchronization requires final verification.
+* Deployment is pending.

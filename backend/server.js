@@ -31,7 +31,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/api/auth", authRoutes);
-
 app.use("/api/rooms", roomRoutes);
 
 const server = http.createServer(app);
@@ -69,6 +68,10 @@ io.use((socket, next) => {
     next(new Error("Invalid or expired token"));
   }
 });
+
+/* =========================================================
+   SOCKET.IO
+   ========================================================= */
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
