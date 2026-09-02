@@ -122,6 +122,38 @@
 }
 
 
+/* =========================================================
+   OUTPUT BUTTON
+   ========================================================= */
+
+.output-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 13px;
+  border: 1px solid #2f3136;
+  border-radius: 9px;
+  background: #15171a;
+  color: #9b9da5;
+  font: 600 12px Inter, Arial, sans-serif;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.output-button:hover {
+  background: #1d1f23;
+  border-color: #6b4a24;
+  color: #f2f2f2;
+}
+
+.output-button.active {
+  background: rgba(255,159,67,.12);
+  border-color: #FF9F43;
+  color: #FFB866;
+  box-shadow: 0 0 0 1px rgba(255,159,67,.08);
+}
+
 .run-button {
   display: inline-flex;
   align-items: center;
@@ -1820,7 +1852,7 @@
   padding: 3px 8px;
   border-radius: 999px;
   background: rgba(124, 58, 237, 0.14);
-  color: #a78bfa;
+  color: #FFC078;
   font-size: 10px;
   font-weight: 600;
 }
@@ -1922,7 +1954,7 @@
 }
 
 .replay-point.active {
-  border-color: #7c3aed;
+  border-color: #E8892E;
   background: rgba(124, 58, 237, 0.14);
   color: #c4b5fd;
 }
@@ -1970,5 +2002,186 @@
 
   .replay-details {
     gap: 7px;
+  }
+}
+
+/* =========================================================
+   OUTPUT WINDOW CONTROLS
+   ========================================================= */
+.editor-output{position:relative;flex:0 0 190px;min-height:120px;display:flex;flex-direction:column;border-top:1px solid #2c2c2c;background:#0d0f10;z-index:6}.output-header{display:flex;align-items:center;justify-content:space-between;height:38px;padding:0 10px;border-bottom:1px solid #25272b;background:#121416;color:#d7d9df;font:600 11px "JetBrains Mono",monospace}.output-title{display:flex;align-items:center;gap:7px}.output-dot{width:6px;height:6px;border-radius:50%;background:#F5B84B;box-shadow:0 0 8px rgba(245,184,75,.5)}.output-actions{display:flex;align-items:center;gap:3px}.output-actions button{width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#777c86;font-size:13px}.output-actions button:hover{background:#1c1f23;color:#fff}.output-content{flex:1;overflow:auto;padding:10px 12px;font:12px/1.6 "JetBrains Mono",monospace;color:#c9ccd3}.output-line{white-space:pre-wrap}.output-empty{color:#626671}.editor-output.output-expanded{position:fixed;inset:18px;z-index:1000;flex:none;border:1px solid #3a3d45;border-radius:12px;box-shadow:0 30px 100px rgba(0,0,0,.7)}
+
+
+/* =========================================================
+   FINAL COLLABORATIVE EDITOR LAYOUT / CURSOR FIXES
+   ========================================================= */
+
+.code-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.code-editor-header {
+  flex: 0 0 58px;
+  min-height: 58px;
+  height: 58px;
+  padding: 10px 14px;
+}
+
+.code-editor-heading {
+  min-width: 0;
+}
+
+.code-editor-heading h2 {
+  font-size: 15px;
+}
+
+.code-editor-heading p {
+  font-size: 10px;
+}
+
+.code-editor-actions {
+  flex: 0 0 auto;
+}
+
+.editor-tabs {
+  flex: 0 0 40px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.editor-tab {
+  height: 40px;
+  min-width: 118px;
+}
+
+.new-tab-button {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+}
+
+.editor-info-bar {
+  flex: 0 0 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.code-area {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-textarea-wrapper {
+  position: relative;
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.code-highlight,
+.code-input {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 24px;
+  padding: 16px;
+  tab-size: 2;
+}
+
+.code-highlight {
+  z-index: 0;
+}
+
+.code-input {
+  z-index: 2;
+}
+
+.remote-cursor-indicator {
+  position: absolute;
+  z-index: 4;
+  width: 2px;
+  height: 24px;
+  pointer-events: none;
+  transform: translateZ(0);
+  will-change: left, top;
+}
+
+.remote-cursor-label {
+  position: absolute;
+  top: -22px;
+  left: 3px;
+  max-width: 150px;
+  min-height: 18px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #fff;
+  font: 600 9px/13px Inter, Arial, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* First-line cursors are kept visible instead of being clipped above
+   the editor viewport. */
+.remote-cursor-indicator:first-child .remote-cursor-label {
+  transform: translateY(2px);
+}
+
+.editor-output {
+  flex: 0 0 180px;
+  min-height: 120px;
+}
+
+.editor-footer {
+  flex: 0 0 28px;
+  height: 28px;
+  min-height: 28px;
+}
+
+@media (max-width: 900px) {
+  .code-editor {
+    height: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .code-editor-header {
+    flex-basis: 54px;
+    min-height: 54px;
+    height: 54px;
+  }
+
+  .editor-tabs {
+    flex-basis: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .editor-tab {
+    height: 38px;
+    min-width: 105px;
+  }
+
+  .new-tab-button {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .remote-cursor-label {
+    max-width: 110px;
+    font-size: 8px;
   }
 }
