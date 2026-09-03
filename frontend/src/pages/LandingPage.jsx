@@ -12,7 +12,6 @@ function Logo() {
 
 function LandingPage({ onLaunch }) {
   const [roomId, setRoomId] = useState("");
-
   const createRoom = () => {
     const id = Math.random().toString(36).slice(2, 8);
     onLaunch(id);

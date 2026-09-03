@@ -237,9 +237,9 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
      OUTPUT STATE
      ======================================================= */
 
-  const [output, setOutput] = useState([
-    "JavaScript execution is currently supported in the browser.",
-  ]);
+  const [output, setOutput] = useState([]);
+  const [showOutput, setShowOutput] = useState(false);
+  const [outputExpanded, setOutputExpanded] = useState(false);
 
   /* =======================================================
      CURSOR POSITION
@@ -304,7 +304,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
 
   const [userColor] = useState(() => {
     const colors = [
-      "#7c3aed",
+      "#E8892E",
       "#2563eb",
       "#059669",
       "#dc2626",
@@ -858,15 +858,38 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       const currentLine = codeLines[line - 1] || "";
       const offset = Math.min(column - 1, currentLine.length);
 
+      /*
+       * Measure exactly the visible portion before the remote caret.
+       * Tabs are expanded for measurement so the caret stays aligned
+       * with the textarea/highlight layers in browsers where canvas text
+       * metrics do not represent tab characters consistently.
+       */
+      const textBeforeCaret = currentLine
+        .slice(0, offset)
+        .replace(/\t/g, "  ");
+
       const width = context
-        ? context.measureText(currentLine.slice(0, offset)).width
+        ? context.measureText(textBeforeCaret).width
         : 0;
 
+      const top =
+        paddingTop + (line - 1) * lineHeight - editorScroll.top;
+      const left =
+        paddingLeft + width - editorScroll.left;
+
+      /*
+       * Keep remote cursors inside the visible editor viewport.
+       * This avoids stale awareness positions rendering outside the
+       * code area while a collaborator scrolls.
+       */
+      const maxLeft = Math.max(0, textarea.clientWidth - 4);
+      const maxTop = Math.max(0, textarea.clientHeight - lineHeight);
+
       positions[socketId] = {
-        top: paddingTop + (line - 1) * lineHeight - editorScroll.top,
-        left: paddingLeft + width - editorScroll.left,
-        userId: awareness.userId || "User",
-        userColor: awareness.userColor || "#ff4d4d",
+        top: Math.max(0, Math.min(maxTop, top)),
+        left: Math.max(0, Math.min(maxLeft, left)),
+        userId: awareness.userId || `User ${socketId.slice(0, 6)}`,
+        userColor: awareness.userColor || "#FF9F43",
       };
     });
 
@@ -1402,12 +1425,14 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       new Function(activeFile.code)();
     } catch (error) {
       setOutput([`Error: ${error.message}`]);
+      setShowOutput(true);
       return;
     } finally {
       console.log = originalLog;
     }
 
     setOutput(logs.length ? logs : ["Code executed successfully."]);
+    setShowOutput(true);
   }, [activeFile]);
 
   /* =======================================================
@@ -1426,8 +1451,10 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       try {
         JSON.parse(activeFile.code);
         setOutput(["Valid JSON."]);
+        setShowOutput(true);
       } catch (error) {
         setOutput([`Invalid JSON: ${error.message}`]);
+        setShowOutput(true);
       }
       return;
     }
@@ -1435,6 +1462,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     setOutput([
       `${activeFile.language} execution/preview is not connected in the frontend-only build.`,
     ]);
+    setShowOutput(true);
   }, [activeFile, runJavaScript]);
 
   /* =======================================================
@@ -1524,6 +1552,19 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
             title="Open replay history"
           >
             ↺ Replay
+          </button>
+
+          <button
+            type="button"
+            className={`output-button ${showOutput ? "active" : ""}`}
+            onClick={() => {
+              setShowOutput((value) => !value);
+              setOutputExpanded(false);
+              setShowFileMenu(false);
+            }}
+            title={showOutput ? "Hide output" : "Show output"}
+          >
+            ▣ Output
           </button>
 
           <button type="button" className="run-button" onClick={runCode}>
@@ -1686,26 +1727,30 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           OUTPUT PANEL
           ================================================= */}
 
-      <div className="editor-output">
-        <div className="output-header">
-          <span>Output</span>
-          <button type="button" onClick={clearOutput}>
-            Clear
-          </button>
-        </div>
+      {showOutput && (
+        <div className={`editor-output ${outputExpanded ? "output-expanded" : ""}`}>
+          <div className="output-header">
+            <div className="output-title"><span className="output-dot" /> Output</div>
+            <div className="output-actions">
+              <button type="button" onClick={clearOutput} title="Clear output">⌫</button>
+              <button type="button" onClick={() => setOutputExpanded((value) => !value)} title={outputExpanded ? "Restore output size" : "Open output full size"}>{outputExpanded ? "↙" : "↗"}</button>
+              <button type="button" onClick={() => { setShowOutput(false); setOutputExpanded(false); }} title="Close output">×</button>
+            </div>
+          </div>
 
-        <div className="output-content">
-          {output.length ? (
-            output.map((line, index) => (
-              <div key={`${index}-${line}`} className="output-line">
-                {line}
-              </div>
-            ))
-          ) : (
-            <span className="output-empty">No output.</span>
-          )}
+          <div className="output-content">
+            {output.length ? (
+              output.map((line, index) => (
+                <div key={`${index}-${line}`} className="output-line">
+                  {line}
+                </div>
+              ))
+            ) : (
+              <span className="output-empty">No output.</span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {isReplayOpen && (
         <div className="replay-panel">

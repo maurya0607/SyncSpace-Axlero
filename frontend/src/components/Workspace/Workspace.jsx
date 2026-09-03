@@ -71,6 +71,9 @@ function Whiteboard({
      ======================================================= */
 
   const [tool, setTool] = useState("pen");
+  const [strokeColor, setStrokeColor] = useState("#FF9F43");
+  const [strokeWidth, setStrokeWidth] = useState(2.5);
+  const [opacity, setOpacity] = useState(1);
 
   const [zoom, setZoom] = useState(1);
 
@@ -90,6 +93,8 @@ function Whiteboard({
     width: 0,
     height: 0,
   });
+
+  const [minimapShapes, setMinimapShapes] = useState([]);
 
   /* =======================================================
      CREATE SHAPE ID
@@ -128,6 +133,33 @@ function Whiteboard({
         minY: Math.min(...ys),
         maxX: Math.max(...xs),
         maxY: Math.max(...ys),
+      };
+    }
+
+    if (shape.type === "line" || shape.type === "arrow") {
+      return {
+        minX: Math.min(shape.startX, shape.endX),
+        minY: Math.min(shape.startY, shape.endY),
+        maxX: Math.max(shape.startX, shape.endX),
+        maxY: Math.max(shape.startY, shape.endY),
+      };
+    }
+
+    if (shape.type === "text") {
+      return {
+        minX: shape.x,
+        minY: shape.y - (shape.fontSize || 16),
+        maxX: shape.x + Math.max(20, (shape.text || "").length * (shape.fontSize || 16) * 0.55),
+        maxY: shape.y + 6,
+      };
+    }
+
+    if (shape.type === "sticky") {
+      return {
+        minX: shape.x,
+        minY: shape.y,
+        maxX: shape.x + shape.width,
+        maxY: shape.y + shape.height,
       };
     }
 
@@ -193,11 +225,10 @@ function Whiteboard({
 
       ctx.save();
 
-      ctx.strokeStyle = "#E6E7EB";
-
-      ctx.fillStyle = "transparent";
-
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = shape.color || "#E6E7EB";
+      ctx.fillStyle = shape.fillColor || "transparent";
+      ctx.globalAlpha = Number.isFinite(shape.opacity) ? shape.opacity : 1;
+      ctx.lineWidth = Number(shape.strokeWidth) || 2.5;
 
       ctx.lineCap = "round";
 
@@ -219,7 +250,7 @@ function Whiteboard({
 
           ctx.setLineDash([6, 4]);
 
-          ctx.strokeStyle = "#7c3aed";
+          ctx.strokeStyle = "#E8892E";
 
           ctx.lineWidth = 1.5;
 
@@ -279,6 +310,75 @@ function Whiteboard({
 
         ctx.restore();
 
+        return;
+      }
+
+      /* =================================================
+         LINE / ARROW
+         ================================================= */
+
+      if (shape.type === "line" || shape.type === "arrow") {
+        ctx.beginPath();
+        ctx.moveTo(shape.startX, shape.startY);
+        ctx.lineTo(shape.endX, shape.endY);
+        ctx.stroke();
+
+        if (shape.type === "arrow") {
+          const angle = Math.atan2(shape.endY - shape.startY, shape.endX - shape.startX);
+          const size = 10 + (Number(shape.strokeWidth) || 2.5);
+          ctx.beginPath();
+          ctx.moveTo(shape.endX, shape.endY);
+          ctx.lineTo(shape.endX - size * Math.cos(angle - Math.PI / 6), shape.endY - size * Math.sin(angle - Math.PI / 6));
+          ctx.moveTo(shape.endX, shape.endY);
+          ctx.lineTo(shape.endX - size * Math.cos(angle + Math.PI / 6), shape.endY - size * Math.sin(angle + Math.PI / 6));
+          ctx.stroke();
+        }
+
+        ctx.restore();
+        return;
+      }
+
+      /* =================================================
+         TEXT
+         ================================================= */
+
+      if (shape.type === "text") {
+        ctx.fillStyle = shape.color || "#E6E7EB";
+        ctx.font = `${shape.fontSize || 16}px Inter, sans-serif`;
+        ctx.textBaseline = "alphabetic";
+        ctx.fillText(shape.text || "", shape.x, shape.y);
+        ctx.restore();
+        return;
+      }
+
+      /* =================================================
+         STICKY NOTE
+         ================================================= */
+
+      if (shape.type === "sticky") {
+        ctx.fillStyle = shape.fillColor || "#f6c453";
+        ctx.strokeStyle = shape.color || "#f6c453";
+        ctx.lineWidth = 1.5;
+        ctx.fillRect(shape.x, shape.y, shape.width, shape.height);
+        ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+        ctx.fillStyle = "#151515";
+        ctx.font = `${shape.fontSize || 14}px Inter, sans-serif`;
+        const words = String(shape.text || "").split(/\s+/);
+        let line = "";
+        let lineY = shape.y + 24;
+        const maxWidth = shape.width - 20;
+        words.forEach((word) => {
+          const test = line ? `${line} ${word}` : word;
+          if (ctx.measureText(test).width > maxWidth && line) {
+            ctx.fillText(line, shape.x + 10, lineY);
+            line = word;
+            lineY += 18;
+          } else {
+            line = test;
+          }
+        });
+        if (line) ctx.fillText(line, shape.x + 10, lineY);
+        ctx.restore();
         return;
       }
 
@@ -558,6 +658,7 @@ function Whiteboard({
 
       shapesRef.current =
         sharedShapes;
+      setMinimapShapes(sharedShapes.slice(-80));
 
       setHasDrawing(
         sharedShapes.length > 0
@@ -841,10 +942,10 @@ function Whiteboard({
           }
 
           if (
-            shape.type ===
-              "rectangle" ||
-            shape.type ===
-              "circle"
+            shape.type === "rectangle" ||
+            shape.type === "circle" ||
+            shape.type === "line" ||
+            shape.type === "arrow"
           ) {
             const minX =
               Math.min(
@@ -1029,13 +1130,36 @@ function Whiteboard({
           id: createShapeId(),
           type: "pen",
           points: [point],
+          color: strokeColor,
+          strokeWidth,
+          opacity,
         };
     }
 
-    if (
-      tool === "rectangle" ||
-      tool === "circle"
-    ) {
+    if (tool === "text" || tool === "sticky") {
+      const message = window.prompt(tool === "text" ? "Enter text" : "Enter sticky note text", "");
+      drawingRef.current = false;
+      if (!message?.trim()) {
+        currentShapeRef.current = null;
+        redraw();
+        return;
+      }
+
+      const shape = tool === "text"
+        ? { id: createShapeId(), type: "text", x: point.x, y: point.y, text: message.trim(), color: strokeColor, opacity, fontSize: 16 }
+        : { id: createShapeId(), type: "sticky", x: point.x, y: point.y, width: 170, height: 110, text: message.trim(), color: "#eab308", fillColor: "#f6c453", opacity, fontSize: 14 };
+
+      const nextShapes = [...shapesRef.current, shape];
+      shapesRef.current = nextShapes;
+      commitShapes(nextShapes);
+      setHasDrawing(true);
+      setRedoStack([]);
+      currentShapeRef.current = null;
+      redraw();
+      return;
+    }
+
+    if (tool === "line" || tool === "arrow" || tool === "rectangle" || tool === "circle") {
       currentShapeRef.current =
         {
           id: createShapeId(),
@@ -1044,6 +1168,9 @@ function Whiteboard({
           startY: point.y,
           endX: point.x,
           endY: point.y,
+          color: strokeColor,
+          strokeWidth,
+          opacity,
         };
     }
 
@@ -1133,22 +1260,14 @@ function Whiteboard({
                 p.y + dy,
             })
           );
+      } else if (source.type === "text" || source.type === "sticky") {
+        moved.x = source.x + dx;
+        moved.y = source.y + dy;
       } else {
-        moved.startX =
-          source.startX +
-          dx;
-
-        moved.startY =
-          source.startY +
-          dy;
-
-        moved.endX =
-          source.endX +
-          dx;
-
-        moved.endY =
-          source.endY +
-          dy;
+        moved.startX = source.startX + dx;
+        moved.startY = source.startY + dy;
+        moved.endX = source.endX + dx;
+        moved.endY = source.endY + dy;
       }
 
       currentShapeRef.current =
@@ -1177,10 +1296,10 @@ function Whiteboard({
        ================================================= */
 
     if (
-      current.type ===
-        "rectangle" ||
-      current.type ===
-        "circle"
+      current.type === "rectangle" ||
+      current.type === "circle" ||
+      current.type === "line" ||
+      current.type === "arrow"
     ) {
       current.endX =
         point.x;
@@ -1289,16 +1408,11 @@ function Whiteboard({
 
     const isValidShape =
       completedShape &&
-      (
-        completedShape.type ===
-        "pen"
-          ? completedShape
-              .points &&
-            completedShape
-              .points
-              .length > 1
-          : true
-      );
+      (completedShape.type === "pen"
+        ? completedShape.points && completedShape.points.length > 1
+        : completedShape.type === "line" || completedShape.type === "arrow"
+          ? Math.hypot(completedShape.endX - completedShape.startX, completedShape.endY - completedShape.startY) > 4
+          : true);
 
     if (
       isValidShape
@@ -1551,91 +1665,39 @@ function Whiteboard({
           ================================================= */}
 
       <div className="whiteboard-toolbar">
-        <ToolButton
-          value="select"
-          title="Select and move"
-          activeTool={tool}
-          onSelect={setTool}
-        >
-          ↖
-        </ToolButton>
-
-        <ToolButton
-          value="pen"
-          title="Pen"
-          activeTool={tool}
-          onSelect={setTool}
-        >
-          🖊
-        </ToolButton>
-
-        <ToolButton
-          value="eraser"
-          title="Eraser"
-          activeTool={tool}
-          onSelect={setTool}
-        >
-          ⌫
-        </ToolButton>
-
-        <ToolButton
-          value="rectangle"
-          title="Rectangle"
-          activeTool={tool}
-          onSelect={setTool}
-        >
-          □
-        </ToolButton>
-
-        <ToolButton
-          value="circle"
-          title="Circle"
-          activeTool={tool}
-          onSelect={setTool}
-        >
-          ○
-        </ToolButton>
+        <ToolButton value="select" title="Select and move" activeTool={tool} onSelect={setTool}>↖</ToolButton>
+        <ToolButton value="pen" title="Pen" activeTool={tool} onSelect={setTool}>🖊</ToolButton>
+        <ToolButton value="line" title="Line" activeTool={tool} onSelect={setTool}>╱</ToolButton>
+        <ToolButton value="arrow" title="Arrow" activeTool={tool} onSelect={setTool}>➜</ToolButton>
+        <ToolButton value="rectangle" title="Rectangle" activeTool={tool} onSelect={setTool}>□</ToolButton>
+        <ToolButton value="circle" title="Circle / Ellipse" activeTool={tool} onSelect={setTool}>○</ToolButton>
+        <ToolButton value="text" title="Text" activeTool={tool} onSelect={setTool}>T</ToolButton>
+        <ToolButton value="sticky" title="Sticky note" activeTool={tool} onSelect={setTool}>▤</ToolButton>
+        <ToolButton value="eraser" title="Eraser" activeTool={tool} onSelect={setTool}>⌫</ToolButton>
 
         <div className="toolbar-divider" />
 
-        <button
-          type="button"
-          className="tool-button"
-          onClick={undo}
-          title="Undo"
-          disabled={
-            !hasDrawing
-          }
-        >
-          ↶
-        </button>
+        <div className="board-style-control" title="Stroke color">
+          <span>Color</span>
+          <input type="color" value={strokeColor} onChange={(e) => setStrokeColor(e.target.value)} aria-label="Stroke color" />
+        </div>
+        <label className="board-style-control">
+          <span>Width</span>
+          <select value={strokeWidth} onChange={(e) => setStrokeWidth(Number(e.target.value))}>
+            <option value="1.5">1</option><option value="2.5">2</option><option value="4">4</option><option value="6">6</option>
+          </select>
+        </label>
+        <label className="board-style-control">
+          <span>Opacity</span>
+          <select value={opacity} onChange={(e) => setOpacity(Number(e.target.value))}>
+            <option value="1">100%</option><option value="0.75">75%</option><option value="0.5">50%</option>
+          </select>
+        </label>
 
-        <button
-          type="button"
-          className="tool-button"
-          onClick={redo}
-          title="Redo"
-          disabled={
-            redoStack.length ===
-            0
-          }
-        >
-          ↷
-        </button>
-
-        <button
-          type="button"
-          className="tool-button"
-          onClick={
-            clearCanvas
-          }
-          title="Clear"
-          disabled={
-            !hasDrawing
-          }
-        >
-          ♲
-        </button>
+        <div className="toolbar-divider" />
+        <button type="button" className="tool-button" onClick={undo} title="Undo" disabled={!hasDrawing}>↶</button>
+        <button type="button" className="tool-button" onClick={redo} title="Redo" disabled={redoStack.length === 0}>↷</button>
+        <button type="button" className="tool-button" onClick={clearCanvas} title="Clear canvas" disabled={!hasDrawing}>⌫</button>
       </div>
 
       {/* =================================================
@@ -1765,45 +1827,44 @@ function Whiteboard({
                 }}
               >
                 <span
+                  className="remote-board-cursor-icon"
                   style={{
-                    fontSize:
-                      "18px",
-                    lineHeight: 1,
-                    color:
-                      "#7c3aed",
-                    textShadow:
-                      "0 1px 3px rgba(0,0,0,.5)",
+                    color: cursor.userColor || "#FF9F43",
                   }}
                 >
                   ➤
                 </span>
 
                 <span
+                  className="remote-board-cursor-label"
                   style={{
-                    padding:
-                      "3px 6px",
-                    borderRadius:
-                      "5px",
-                    background:
-                      "#7c3aed",
-                    color:
-                      "#fff",
-                    fontSize:
-                      "10px",
-                    fontWeight:
-                      600,
-                    whiteSpace:
-                      "nowrap",
+                    backgroundColor: cursor.userColor || "#FF9F43",
                   }}
                 >
-                  {socketId.slice(
-                    0,
-                    8
-                  )}
+                  {cursor.userId || socketId.slice(0, 8)}
                 </span>
               </div>
             );
           }
+        )}
+
+        {/* =================================================
+            MINIMAP
+            ================================================= */}
+
+        {hasDrawing && (
+          <div className="board-minimap" title="Canvas overview">
+            <div className="board-minimap-label">MINI MAP</div>
+            <div className="board-minimap-viewport">
+              {minimapShapes.map((shape, index) => {
+                const bounds = getShapeBounds(shape);
+                if (!bounds) return null;
+                const x = Math.max(3, Math.min(91, 50 + (bounds.minX / Math.max(canvasSize.width, 1)) * 40));
+                const y = Math.max(8, Math.min(84, 45 + (bounds.minY / Math.max(canvasSize.height, 1)) * 35));
+                return <span key={`${shape.id || index}-mini`} className="board-minimap-shape" style={{ left: `${x}%`, top: `${y}%` }} />;
+              })}
+            </div>
+          </div>
         )}
 
         {/* =================================================
@@ -1854,16 +1915,17 @@ function Whiteboard({
    MAIN WORKSPACE
    ========================================================= */
 
-function Workspace() {
+function Workspace({ roomId: roomIdProp, workspaceMode = "split" }) {
   /* =======================================================
      GET ROOM ID
      ======================================================= */
 
   const roomId =
+    roomIdProp ||
     decodeURIComponent(
       window.location.pathname.split(
         "/room/"
-      )[1] ||
+      )[1]?.split("?")[0] ||
         "default-room"
     );
 
@@ -1933,7 +1995,7 @@ function Workspace() {
           CONTENT
           ================================================= */}
 
-      <div className="workspace-content">
+      <div className={`workspace-content workspace-mode-${workspaceMode}`}>
         {/* =================================================
             WHITEBOARD
             ================================================= */}

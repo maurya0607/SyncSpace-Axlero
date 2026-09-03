@@ -11,7 +11,7 @@ function Logo() {
   );
 }
 
-function RoomPage({ roomId, onHome }) {
+function RoomPage({ roomId, workspaceMode, onModeChange, onHome }) {
   const [copied, setCopied] = useState(false);
 
   const copyInvite = async () => {
@@ -36,6 +36,18 @@ function RoomPage({ roomId, onHome }) {
             <span className="room-label">ROOM</span>
             <strong>{roomId}</strong>
           </div>
+          <div className="room-mode-switch" aria-label="Workspace mode">
+            {[["board", "Board"], ["code", "Code Editor"], ["split", "Split"]].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={workspaceMode === value ? "active" : ""}
+                onClick={() => onModeChange(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="room-header-right">
@@ -51,7 +63,7 @@ function RoomPage({ roomId, onHome }) {
       </div>
 
       <main className="room-main">
-        <Workspace roomId={roomId}/>
+        <Workspace roomId={roomId} workspaceMode={workspaceMode} />
       </main>
     </div>
   );
