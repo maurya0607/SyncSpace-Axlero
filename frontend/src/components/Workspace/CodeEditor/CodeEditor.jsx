@@ -833,6 +833,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       14;
     const paddingTop = parseFloat(styles.paddingTop) || 0;
     const paddingLeft = parseFloat(styles.paddingLeft) || 0;
+    const tabSize = Number(styles.tabSize) || 2;
 
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
@@ -847,54 +848,110 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       ].join(" ");
     }
 
-    const codeLines = activeFile.code.split("\n");
-    const positions = {};
+    const spaceWidth = context
+      ? context.measureText(" ").width
+      : 7.8;
+    const tabWidth = Math.max(spaceWidth, spaceWidth * tabSize);
 
-    Object.entries(remoteCursors).forEach(([socketId, awareness]) => {
-      if (!awareness || awareness.fileId !== activeFileId) return;
+    /*
+     * Canvas text metrics do not treat tab characters like a textarea
+     * with CSS tab-size. Measure the text one character at a time so
+     * tabs advance to the next tab stop exactly like the editor.
+     */
+    const measureBeforeCaret = (text) => {
+      let width = 0;
+      let visualColumn = 0;
 
-      const line = Math.max(1, Number(awareness.line) || 1);
-      const column = Math.max(1, Number(awareness.column) || 1);
-      const currentLine = codeLines[line - 1] || "";
-      const offset = Math.min(column - 1, currentLine.length);
+      for (const character of text) {
+        if (character === "\t") {
+          const remainder = visualColumn % tabSize;
+          const spacesToNextTab = tabSize - remainder;
+          width += spacesToNextTab * spaceWidth;
+          visualColumn += spacesToNextTab;
+        } else {
+          width += context
+            ? context.measureText(character).width
+            : spaceWidth;
+          visualColumn += 1;
+        }
+      }
 
-      /*
-       * Measure exactly the visible portion before the remote caret.
-       * Tabs are expanded for measurement so the caret stays aligned
-       * with the textarea/highlight layers in browsers where canvas text
-       * metrics do not represent tab characters consistently.
-       */
-      const textBeforeCaret = currentLine
-        .slice(0, offset)
-        .replace(/\t/g, "  ");
+      return width;
+    };
 
-      const width = context
-        ? context.measureText(textBeforeCaret).width
-        : 0;
+    const measurePositions = () => {
+      const codeLines = activeFile.code.split("\n");
+      const positions = {};
 
-      const top =
-        paddingTop + (line - 1) * lineHeight - editorScroll.top;
-      const left =
-        paddingLeft + width - editorScroll.left;
+      Object.entries(remoteCursors).forEach(([socketId, awareness]) => {
+        if (!awareness || awareness.fileId !== activeFileId) return;
 
-      /*
-       * Keep remote cursors inside the visible editor viewport.
-       * This avoids stale awareness positions rendering outside the
-       * code area while a collaborator scrolls.
-       */
-      const maxLeft = Math.max(0, textarea.clientWidth - 4);
-      const maxTop = Math.max(0, textarea.clientHeight - lineHeight);
+        const line = Math.max(1, Number(awareness.line) || 1);
+        const column = Math.max(1, Number(awareness.column) || 1);
+        const currentLine = codeLines[line - 1] || "";
+        const offset = Math.min(column - 1, currentLine.length);
 
-      positions[socketId] = {
-        top: Math.max(0, Math.min(maxTop, top)),
-        left: Math.max(0, Math.min(maxLeft, left)),
-        userId: awareness.userId || `User ${socketId.slice(0, 6)}`,
-        userColor: awareness.userColor || "#FF9F43",
-      };
-    });
+        const width = measureBeforeCaret(currentLine.slice(0, offset));
 
-    setRemoteCursorPositions(positions);
-    return undefined;
+        const top =
+          paddingTop +
+          (line - 1) * lineHeight -
+          editorScroll.top;
+
+        const left =
+          paddingLeft +
+          width -
+          editorScroll.left;
+
+        const viewportWidth = Math.max(
+          1,
+          textarea.clientWidth,
+        );
+        const viewportHeight = Math.max(
+          1,
+          textarea.clientHeight,
+        );
+
+        /*
+         * Do not clamp a remote caret to the edge. Instead, hide it
+         * when it is outside the visible viewport. This prevents a
+         * collaborator's stale caret from appearing on unrelated code.
+         */
+        const visible =
+          left >= -2 &&
+          left <= viewportWidth - 2 &&
+          top >= -lineHeight &&
+          top <= viewportHeight;
+
+        if (!visible) return;
+
+        const labelWidth = 120;
+        const labelAlignRight =
+          left + labelWidth > viewportWidth - 6;
+
+        positions[socketId] = {
+          top: Math.max(0, top),
+          left: Math.max(0, Math.min(viewportWidth - 2, left)),
+          userId:
+            awareness.userId ||
+            `User ${socketId.slice(0, 6)}`,
+          userColor: awareness.userColor || "#FF9F43",
+          labelBelow: top < 28,
+          labelAlignRight,
+        };
+      });
+
+      setRemoteCursorPositions(positions);
+    };
+
+    measurePositions();
+
+    const resizeObserver = new ResizeObserver(measurePositions);
+    resizeObserver.observe(textarea);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, [remoteCursors, activeFile, activeFileId, editorScroll]);
 
   /* =========================================================
@@ -1670,6 +1727,33 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           ================================================= */}
 
       <div className="code-area">
+        <aside className="code-explorer" aria-label="Project files">
+          <div className="code-explorer-header">
+            <span>EXPLORER</span>
+            <button type="button" title="Create new file" onClick={openNewFileModal}>+</button>
+          </div>
+          <div className="code-explorer-title">
+            <span>⌄</span>
+            <strong>WORKSPACE</strong>
+            <small>{files.length}</small>
+          </div>
+          <div className="code-explorer-files">
+            {files.map((file) => (
+              <button
+                key={`explorer-${file.id}`}
+                type="button"
+                className={`code-explorer-file ${file.id === activeFileId ? "active" : ""}`}
+                onClick={() => switchFile(file.id)}
+                title={file.name}
+              >
+                <span className="explorer-file-icon">{getTabLanguageLabel(file.language).slice(0, 2)}</span>
+                <span className="explorer-file-name">{file.name}</span>
+                {file.code !== file.savedCode && <i>●</i>}
+              </button>
+            ))}
+          </div>
+        </aside>
+
         <div ref={lineNumbersRef} className="line-numbers">
           {lineNumbers.map((number) => (
             <div key={number} className="line-number">
@@ -1690,7 +1774,9 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
               }}
             >
               <span
-                className="remote-cursor-label"
+                className={`remote-cursor-label ${
+                  cursor.labelBelow ? "label-below" : ""
+                } ${cursor.labelAlignRight ? "label-right" : ""}`}
                 style={{ backgroundColor: cursor.userColor }}
               >
                 {cursor.userId}
