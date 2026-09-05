@@ -854,3 +854,372 @@
   text-overflow: ellipsis;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
 }
+
+
+/* =========================================================
+   AX LERO PROFESSIONAL UI PASS
+   ---------------------------------------------------------
+   Visual polish only. Collaboration/state logic is unchanged.
+   ========================================================= */
+
+.workspace {
+  font-family: Inter, system-ui, sans-serif;
+  background: #08090b;
+}
+
+.workspace-content {
+  gap: 12px;
+  align-items: stretch;
+}
+
+.workspace-content > .panel {
+  border: 1px solid #272a31;
+  border-radius: 12px;
+  background: #0d0f12;
+  box-shadow: 0 18px 45px rgba(0,0,0,.22);
+}
+
+/* ---------------------------------------------------------
+   WHITEBOARD PANEL
+   --------------------------------------------------------- */
+
+.whiteboard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #0d0f12;
+}
+
+.whiteboard .panel-header {
+  position: relative;
+  height: 52px;
+  min-height: 52px;
+  padding: 0 13px;
+  gap: 10px;
+  background: #101216;
+  border-bottom: 1px solid #272a31;
+}
+
+.whiteboard .panel-title {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.whiteboard .panel-icon {
+  width: 27px;
+  height: 27px;
+  border: 1px solid #343740;
+  background: #171a20;
+  color: #ff9f43;
+  box-shadow: inset 0 0 0 1px rgba(255,159,67,.04);
+}
+
+.whiteboard .panel-title h2 {
+  color: #eceef2;
+  font: 600 12px/1.2 "Space Grotesk", Inter, sans-serif;
+  letter-spacing: .01em;
+}
+
+.whiteboard .panel-title span {
+  color: #686d78;
+  font: 9px/1.2 "JetBrains Mono", monospace;
+}
+
+.whiteboard .panel-menu {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  color: #727783;
+  background: transparent;
+}
+
+.whiteboard .panel-menu:hover {
+  background: #1b1e24;
+  color: #f5f5f7;
+}
+
+/* Sync pill stays inside the header and never escapes toward Invite. */
+.whiteboard .canvas-sync-status {
+  position: static;
+  order: 2;
+  margin: 0;
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid #292d35;
+  border-radius: 999px;
+  background: #15181d;
+  color: #8d929d;
+  font: 500 9px/1.2 "JetBrains Mono", monospace;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.whiteboard .canvas-sync-status .status-dot {
+  width: 5px;
+  height: 5px;
+  background: #666b75;
+}
+
+.whiteboard .canvas-sync-status .status-dot.online {
+  background: #ff9f43;
+  box-shadow: 0 0 9px rgba(255,159,67,.65);
+}
+
+/* ---------------------------------------------------------
+   WHITEBOARD TOOLBAR
+   --------------------------------------------------------- */
+
+.whiteboard-toolbar {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 9px;
+  gap: 4px;
+  background: #0f1115;
+  border-bottom: 1px solid #272a31;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.whiteboard-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.whiteboard .tool-button {
+  width: 29px;
+  height: 29px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #7e838e;
+  font: 500 12px/1 Inter, sans-serif;
+}
+
+.whiteboard .tool-button:hover {
+  border-color: #2e323a;
+  background: #191c21;
+  color: #eceef2;
+}
+
+.whiteboard .tool-button.active {
+  border-color: rgba(255,159,67,.45);
+  background: rgba(255,159,67,.14);
+  color: #ffb866;
+  box-shadow: inset 0 0 0 1px rgba(255,159,67,.06);
+}
+
+.whiteboard .tool-button:disabled {
+  opacity: .3;
+  cursor: default;
+}
+
+.whiteboard .toolbar-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: #292c33;
+}
+
+.whiteboard .board-style-control {
+  height: 29px;
+  padding: 0 7px;
+  border-color: #292d35;
+  border-radius: 6px;
+  background: #15181d;
+  color: #777d88;
+  font: 9px "JetBrains Mono", monospace;
+}
+
+.whiteboard .board-style-control select {
+  background: #15181d;
+  color: #c0c4cc;
+}
+
+.whiteboard .board-style-control input[type="color"] {
+  width: 17px;
+  height: 17px;
+}
+
+/* ---------------------------------------------------------
+   WHITEBOARD CANVAS
+   --------------------------------------------------------- */
+
+.whiteboard .whiteboard-canvas-container {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  background-color: #0d0f12;
+  background-image:
+    linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.whiteboard .whiteboard-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+/* Empty state is intentionally subtle rather than a large card. */
+.whiteboard .canvas-message {
+  width: min(290px, 80%);
+}
+
+.whiteboard .canvas-icon {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 10px;
+  border: 1px solid #2d3038;
+  border-radius: 10px;
+  background: #15181d;
+  color: #ff9f43;
+  box-shadow: 0 12px 30px rgba(0,0,0,.22);
+}
+
+.whiteboard .canvas-message h3 {
+  color: #e8eaf0;
+  font: 600 14px/1.2 "Space Grotesk", sans-serif;
+}
+
+.whiteboard .canvas-message p {
+  margin: 7px 0 14px;
+  color: #6b707b;
+  font: 10px/1.6 Inter, sans-serif;
+}
+
+.whiteboard .start-drawing-button {
+  padding: 9px 14px;
+  border: 1px solid rgba(255,159,67,.35);
+  border-radius: 7px;
+  background: #ff9f43;
+  color: #151515;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 8px 25px rgba(255,159,67,.14);
+}
+
+.whiteboard .start-drawing-button:hover {
+  background: #ffb866;
+}
+
+/* ---------------------------------------------------------
+   WHITEBOARD REMOTE COLLABORATORS
+   --------------------------------------------------------- */
+
+.whiteboard .remote-board-cursor-icon {
+  width: 16px;
+  height: 18px;
+  font-size: 14px;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.7));
+}
+
+.whiteboard .remote-board-cursor-label {
+  min-height: 18px;
+  max-width: 130px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 5px;
+  color: #fff;
+  font: 600 9px/13px Inter, sans-serif;
+  box-shadow: 0 6px 16px rgba(0,0,0,.35);
+}
+
+/* ---------------------------------------------------------
+   MINIMAP / ZOOM
+   --------------------------------------------------------- */
+
+.whiteboard .board-minimap {
+  right: 11px;
+  bottom: 54px;
+  width: 116px;
+  height: 76px;
+  padding: 7px;
+  border-color: #2b2f37;
+  border-radius: 8px;
+  background: rgba(13,15,18,.94);
+  box-shadow: 0 14px 30px rgba(0,0,0,.35);
+}
+
+.whiteboard .zoom-controls {
+  right: 11px;
+  bottom: 11px;
+  border-color: #2b2f37;
+  border-radius: 7px;
+  background: #15181d;
+  box-shadow: 0 12px 25px rgba(0,0,0,.3);
+}
+
+.whiteboard .zoom-controls button {
+  height: 29px;
+  width: 31px;
+  border-color: #2b2f37;
+  background: #15181d;
+  color: #858a95;
+}
+
+.whiteboard .zoom-controls .zoom-value {
+  width: 53px;
+  color: #a0a4ad;
+}
+
+/* ---------------------------------------------------------
+   SPLIT / BOARD / CODE HEIGHT
+   --------------------------------------------------------- */
+
+.room-main .workspace-content {
+  min-height: 0;
+  height: 100%;
+}
+
+.room-main .workspace-content.workspace-mode-split {
+  grid-template-columns: minmax(360px, 1fr) minmax(430px, 1.08fr);
+}
+
+.room-main .workspace-content.workspace-mode-board,
+.room-main .workspace-content.workspace-mode-code {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.room-main .workspace-content.workspace-mode-split > .panel,
+.room-main .workspace-content.workspace-mode-board > .panel,
+.room-main .workspace-content.workspace-mode-code > .panel {
+  min-height: 0;
+  height: 100%;
+}
+
+@media (max-width: 1050px) {
+  .room-main .workspace-content.workspace-mode-split {
+    grid-template-columns: minmax(300px, 1fr) minmax(360px, 1.08fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .room-main .workspace-content.workspace-mode-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(480px, 1fr) minmax(560px, 1fr);
+    overflow-y: auto;
+  }
+
+  .room-main .workspace-content.workspace-mode-split > .panel {
+    height: auto;
+    min-height: 480px;
+  }
+
+  .room-main .workspace-content.workspace-mode-board,
+  .room-main .workspace-content.workspace-mode-code {
+    height: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .whiteboard .canvas-sync-status {
+    display: none;
+  }
+}
