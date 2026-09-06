@@ -141,3 +141,19 @@
     height: calc(100vh - 92px);
   }
 }
+
+
+/* =========================================================
+   ROOM MOTION POLISH
+   ========================================================= */
+.room-header { animation: roomHeaderIn .45s ease both; }
+.room-subbar { animation: roomSubbarIn .5s .05s ease both; }
+.room-main .panel { animation: roomPanelIn .5s .08s cubic-bezier(.2,.8,.2,1) both; }
+.live-status span { animation: roomLivePulse 1.8s ease-in-out infinite; }
+.room-mode-switch button { transition:transform .16s ease, background .16s ease, color .16s ease; }
+.room-mode-switch button:hover { transform:translateY(-1px); }
+@keyframes roomHeaderIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes roomSubbarIn{from{opacity:0}to{opacity:1}}
+@keyframes roomPanelIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes roomLivePulse{0%,100%{opacity:.65;box-shadow:0 0 5px rgba(245,184,75,.4)}50%{opacity:1;box-shadow:0 0 14px rgba(245,184,75,.9)}}
+@media(prefers-reduced-motion:reduce){.room-header,.room-subbar,.room-main .panel,.live-status span{animation:none!important}}

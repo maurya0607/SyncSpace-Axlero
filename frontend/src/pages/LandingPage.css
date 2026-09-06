@@ -26,7 +26,7 @@
 .floating-chip{position:absolute;background:#15171d;border:1px solid #30323b;border-radius:8px;padding:8px 11px;font:10px "JetBrains Mono",monospace;box-shadow:0 12px 35px rgba(0,0,0,.3)}.chip-live{right:-20px;top:20%}.chip-live:first-letter{color:#F5B84B}.chip-sync{left:-18px;bottom:11%;color:#aaa}
 .feature-section,.workflow-section{max-width:1240px;margin:auto;padding:100px 28px;border-top:1px solid #1b1d22}.section-heading h2{font:600 clamp(34px,4vw,54px)/1.05 "Space Grotesk",sans-serif;letter-spacing:-.05em;margin:22px 0 50px}.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid #24262d;border-radius:12px;overflow:hidden}.feature-grid article{padding:30px;border-right:1px solid #24262d;min-height:240px;position:relative}.feature-grid article:last-child{border-right:0}.feature-icon{width:36px;height:36px;border:1px solid #31333b;border-radius:8px;display:grid;place-items:center;color:#FFB866;font:600 13px "JetBrains Mono",monospace}.feature-no{position:absolute;right:28px;top:31px;color:#444750;font:10px "JetBrains Mono",monospace}.feature-grid h3{font:600 18px "Space Grotesk",sans-serif;margin:42px 0 9px}.feature-grid p,.steps p{color:#777a84;font-size:12px;line-height:1.7;margin:0}.workflow-section{display:grid;grid-template-columns:.7fr 1.3fr;gap:80px}.workflow-section h2{font:600 50px "Space Grotesk",sans-serif;letter-spacing:-.05em;margin:18px 0}.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}.steps>div{border-left:1px solid #292b32;padding-left:18px}.steps span{font:10px "JetBrains Mono",monospace;color:#E89A3C}.steps h3{font:600 16px "Space Grotesk",sans-serif;margin:35px 0 8px}.landing-footer{max-width:1240px;margin:auto;border-top:1px solid #1b1d22;padding:25px 28px;display:flex;align-items:center;gap:30px;color:#555861;font-size:10px}.landing-footer span:last-child{margin-left:auto}
 @media(max-width:900px){.hero{grid-template-columns:1fr;padding-top:70px}.hero-product{margin-top:20px}.feature-grid,.workflow-section{grid-template-columns:1fr}.feature-grid article{border-right:0;border-bottom:1px solid #24262d}.feature-grid article:last-child{border-bottom:0}.steps{grid-template-columns:1fr}.landing-nav nav{display:none}.landing-footer{flex-wrap:wrap}.landing-footer span:last-child{margin-left:0}}
-@media(max-width:560px){.landing-nav{padding:0 18px}.nav-launch{display:none}.hero,.feature-section,.workflow-section{padding-left:18px;padding-right:18px}.hero h1{font-size:48px}.hero-actions{flex-direction:column}.join-form{width:100%}.join-form input{flex:1}.preview-body{height:300px}.chip-live,.chip-sync{display:none}}
+@media(max-width:560px){.landing-nav{padding:0 18px}.landing-auth-actions{display:none}.hero,.feature-section,.workflow-section{padding-left:18px;padding-right:18px}.hero h1{font-size:48px}.hero-actions{flex-direction:column}.join-form{width:100%}.join-form input{flex:1}.preview-body{height:300px}.chip-live,.chip-sync{display:none}}
 
 
 
@@ -95,3 +95,73 @@
     transition: none;
   }
 }
+
+
+/* =========================================================
+   AUTH NAVIGATION
+   ========================================================= */
+.landing-auth-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-signin {
+  border: 1px solid transparent;
+  background: transparent;
+  color: #8f929c;
+  border-radius: 8px;
+  padding: 10px 13px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nav-signin:hover {
+  color: #f5f5f7;
+  background: rgba(255,255,255,.04);
+}
+.hero-auth-note {
+  margin-top: 12px;
+  color: #5f636d;
+  font-size: 10px;
+}
+.hero-auth-note button {
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #ffb866;
+  font-size: inherit;
+  font-weight: 600;
+}
+.hero-auth-note button:hover { color: #ffd09a; }
+
+@media(max-width:560px) {
+  .landing-auth-actions { gap: 2px; }
+  .nav-signin { padding: 9px 8px; }
+}
+
+
+/* =========================================================
+   LIVELY LANDING MOTION
+   ========================================================= */
+.landing-page { position:relative; overflow-x:hidden; }
+.landing-nav { animation: landingNavIn .55s ease both; }
+.hero-copy { animation: landingHeroIn .7s .08s cubic-bezier(.2,.8,.2,1) both; }
+.hero-product { animation: landingProductIn .8s .15s cubic-bezier(.2,.8,.2,1) both; }
+.hero-glow-one { animation: landingGlow 8s ease-in-out infinite alternate; }
+.hero-glow-two { animation: landingGlow 10s ease-in-out infinite alternate-reverse; }
+.preview-window { animation: landingFloat 7s ease-in-out infinite; }
+.floating-chip { animation: landingChip 4.5s ease-in-out infinite; }
+.feature-grid article { animation: landingCardIn .55s both; }
+.feature-grid article:nth-child(2){animation-delay:.08s}.feature-grid article:nth-child(3){animation-delay:.16s}
+.primary-cta,.nav-launch,.join-form button { transition:transform .18s ease, box-shadow .18s ease, background .18s ease; }
+.primary-cta:hover { box-shadow:0 14px 42px rgba(255,159,67,.25); }
+
+@keyframes landingNavIn { from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none} }
+@keyframes landingHeroIn { from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none} }
+@keyframes landingProductIn { from{opacity:0;transform:translateX(24px) scale(.98)}to{opacity:1;transform:none} }
+@keyframes landingFloat { 0%,100%{transform:rotateY(-5deg) rotateX(2deg) translateY(0)}50%{transform:rotateY(-3deg) rotateX(1deg) translateY(-8px)} }
+@keyframes landingGlow { from{transform:translate3d(-15px,-8px,0) scale(.95)}to{transform:translate3d(20px,15px,0) scale(1.06)} }
+@keyframes landingChip { 0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)} }
+@keyframes landingCardIn { from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none} }
+@media(prefers-reduced-motion:reduce){.landing-nav,.hero-copy,.hero-product,.hero-glow-one,.hero-glow-two,.preview-window,.floating-chip,.feature-grid article{animation:none!important}}
