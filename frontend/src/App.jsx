@@ -1,62 +1,93 @@
 import { useEffect, useState } from "react";
 import LandingPage from "./pages/LandingPage";
 import RoomPage from "./pages/RoomPage";
+import AuthPage from "./pages/AuthPage";
 
-function getRoomState() {
-  const match = window.location.pathname.match(/^\/room\/([^/]+)/);
-  if (!match) return { roomId: null, mode: "split" };
+function getRouteState() {
+  const path = window.location.pathname;
 
-  const params = new URLSearchParams(window.location.search);
-  const mode = ["board", "code", "split"].includes(params.get("mode"))
-    ? params.get("mode")
-    : "split";
+  const roomMatch = path.match(/^\/room\/([^/]+)/);
+  if (roomMatch) {
+    const params = new URLSearchParams(window.location.search);
+    const mode = ["board", "code", "split"].includes(params.get("mode"))
+      ? params.get("mode")
+      : "split";
 
-  return { roomId: decodeURIComponent(match[1]), mode };
+    return {
+      page: "room",
+      roomId: decodeURIComponent(roomMatch[1]),
+      mode,
+      authMode: null,
+    };
+  }
+
+  if (path === "/signin" || path === "/login") {
+    return { page: "auth", roomId: null, mode: "split", authMode: "signin" };
+  }
+
+  if (path === "/signup" || path === "/register") {
+    return { page: "auth", roomId: null, mode: "split", authMode: "signup" };
+  }
+
+  return { page: "home", roomId: null, mode: "split", authMode: null };
 }
 
 function App() {
-  const [roomState, setRoomState] = useState(getRoomState);
+  const [route, setRoute] = useState(getRouteState);
 
   useEffect(() => {
-    const onPop = () => setRoomState(getRoomState());
+    const onPop = () => setRoute(getRouteState());
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  const navigate = (path) => {
+    window.history.pushState({}, "", path);
+    setRoute(getRouteState());
+    window.scrollTo(0, 0);
+  };
+
   const openRoom = (id, mode = "split") => {
     const cleanId = String(id).trim();
     const cleanMode = ["board", "code", "split"].includes(mode) ? mode : "split";
-    window.history.pushState(
-      {},
-      "",
-      `/room/${encodeURIComponent(cleanId)}?mode=${cleanMode}`
-    );
-    setRoomState({ roomId: cleanId, mode: cleanMode });
+    navigate(`/room/${encodeURIComponent(cleanId)}?mode=${cleanMode}`);
   };
 
   const changeMode = (mode) => {
-    if (!roomState.roomId) return;
-    window.history.pushState(
-      {},
-      "",
-      `/room/${encodeURIComponent(roomState.roomId)}?mode=${mode}`
+    if (!route.roomId) return;
+    navigate(`/room/${encodeURIComponent(route.roomId)}?mode=${mode}`);
+  };
+
+  const goHome = () => navigate("/");
+
+  if (route.page === "room") {
+    return (
+      <RoomPage
+        roomId={route.roomId}
+        workspaceMode={route.mode}
+        onModeChange={changeMode}
+        onHome={goHome}
+      />
     );
-    setRoomState((current) => ({ ...current, mode }));
-  };
+  }
 
-  const goHome = () => {
-    window.history.pushState({}, "", "/");
-    setRoomState({ roomId: null, mode: "split" });
-  };
+  if (route.page === "auth") {
+    return (
+      <AuthPage
+        mode={route.authMode}
+        onModeChange={(mode) => navigate(mode === "signin" ? "/signin" : "/signup")}
+        onHome={goHome}
+      />
+    );
+  }
 
-  return roomState.roomId ? (
-    <RoomPage
-      roomId={roomState.roomId}
-      workspaceMode={roomState.mode}
-      onModeChange={changeMode}
-      onHome={goHome}
+  return (
+    <LandingPage
+      onLaunch={openRoom}
+      onSignIn={() => navigate("/signin")}
+      onSignUp={() => navigate("/signup")}
     />
-  ) : <LandingPage onLaunch={openRoom} />;
+  );
 }
 
 export default App;

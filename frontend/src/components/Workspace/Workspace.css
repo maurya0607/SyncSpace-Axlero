@@ -1223,3 +1223,16 @@
     display: none;
   }
 }
+
+/* =========================================================
+   WORKSPACE LIVELY MOTION
+   ========================================================= */
+.workspace { position:relative; }
+.workspace .workspace-header { animation: workspaceHeaderIn .4s ease both; }
+.workspace .panel { animation: workspacePanelIn .5s .06s cubic-bezier(.2,.8,.2,1) both; }
+.workspace .panel:nth-child(2) { animation-delay:.12s; }
+.workspace button { transition:transform .15s ease, border-color .15s ease, background .15s ease, color .15s ease; }
+.workspace button:hover { transform:translateY(-1px); }
+@keyframes workspaceHeaderIn { from{opacity:0;transform:translateY(-7px)} to{opacity:1;transform:none} }
+@keyframes workspacePanelIn { from{opacity:0;transform:translateY(10px) scale(.995)} to{opacity:1;transform:none} }
+@media(prefers-reduced-motion:reduce){.workspace .workspace-header,.workspace .panel{animation:none!important}.workspace button{transition:none!important}}
