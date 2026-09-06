@@ -287,6 +287,17 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
   const replayApplyingRef = useRef(false);
 
   /* =======================================================
+     FRONTEND-ONLY COLLABORATION FALLBACK
+     -------------------------------------------------------
+     BroadcastChannel keeps multiple SyncSpace windows on the
+     same origin synchronized without requiring the backend.
+     Socket.IO remains supported when it is available.
+     ======================================================= */
+  const browserChannelRef = useRef(null);
+  const browserClientIdRef = useRef(null);
+  const browserSyncReadyRef = useRef(false);
+
+  /* =======================================================
      REMOTE CURSORS / EDITOR SCROLL
      ======================================================= */
 
@@ -707,6 +718,169 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
   }, [socket, roomId, files, activeFileId]);
 
   /* =======================================================
+     BROWSER CODE SYNC FALLBACK
+     ======================================================= */
+
+  useEffect(() => {
+    if (!roomId || typeof BroadcastChannel === "undefined") {
+      return undefined;
+    }
+
+    if (!browserClientIdRef.current) {
+      browserClientIdRef.current = `editor-${Math.random()
+        .toString(36)
+        .slice(2, 10)}`;
+    }
+
+    const channel = new BroadcastChannel(`syncspace:${roomId}:code`);
+    browserChannelRef.current = channel;
+
+    const senderId = browserClientIdRef.current;
+
+    const postState = (targetId = null) => {
+      channel.postMessage({
+        type: "state",
+        senderId,
+        targetId,
+        roomId,
+        files,
+        activeFileId,
+      });
+    };
+
+    const handleBrowserMessage = (event) => {
+      const message = event?.data;
+
+      if (!message || message.senderId === senderId) return;
+      if (message.roomId && message.roomId !== roomId) return;
+
+      if (message.type === "request-state") {
+        postState(message.senderId);
+        return;
+      }
+
+      if (message.type === "state" || message.type === "update") {
+        if (message.targetId && message.targetId !== senderId) return;
+        if (!Array.isArray(message.files)) return;
+
+        applyingRemoteCodeRef.current = true;
+        const normalized = normalizeFiles(message.files);
+        previousFilesRef.current = normalized;
+        setFiles(normalized);
+
+        if (
+          message.activeFileId &&
+          normalized.some((file) => file.id === message.activeFileId)
+        ) {
+          setActiveFileId(message.activeFileId);
+        }
+
+        requestAnimationFrame(() => {
+          applyingRemoteCodeRef.current = false;
+          updateCursorPosition(textareaRef.current);
+        });
+        return;
+      }
+
+      if (message.type === "active-file") {
+        if (!message.fileId) return;
+        setActiveFileId(message.fileId);
+        return;
+      }
+
+      if (message.type === "cursor" && message.awareness) {
+        setRemoteCursors((current) => ({
+          ...current,
+          [message.senderId]: message.awareness,
+        }));
+      }
+
+      if (message.type === "cursor-remove") {
+        setRemoteCursors((current) => {
+          const next = { ...current };
+          delete next[message.senderId];
+          return next;
+        });
+      }
+    };
+
+    channel.addEventListener("message", handleBrowserMessage);
+
+    /* Ask another open window for its current editor state. */
+    channel.postMessage({
+      type: "request-state",
+      senderId,
+      roomId,
+    });
+
+    /*
+     * Give an existing window a moment to answer before allowing this
+     * window to broadcast its own localStorage/default state.
+     */
+    const readyTimer = window.setTimeout(() => {
+      browserSyncReadyRef.current = true;
+    }, 250);
+
+    return () => {
+      window.clearTimeout(readyTimer);
+      channel.postMessage({
+        type: "cursor-remove",
+        senderId,
+        roomId,
+      });
+      channel.removeEventListener("message", handleBrowserMessage);
+      channel.close();
+      browserChannelRef.current = null;
+      browserSyncReadyRef.current = false;
+    };
+    // The channel must be created only once per room.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId]);
+
+  useEffect(() => {
+    if (
+      !roomId ||
+      !browserSyncReadyRef.current ||
+      applyingRemoteCodeRef.current ||
+      !browserChannelRef.current
+    ) {
+      return;
+    }
+
+    browserChannelRef.current.postMessage({
+      type: "update",
+      senderId: browserClientIdRef.current,
+      roomId,
+      files,
+      activeFileId,
+    });
+  }, [files, activeFileId, roomId]);
+
+  useEffect(() => {
+    if (!browserChannelRef.current || !browserSyncReadyRef.current) return;
+
+    browserChannelRef.current.postMessage({
+      type: "cursor",
+      senderId: browserClientIdRef.current,
+      roomId,
+      awareness: {
+        userId,
+        userColor,
+        line: cursorPosition.line,
+        column: cursorPosition.column,
+        fileId: activeFileId,
+      },
+    });
+  }, [
+    roomId,
+    userId,
+    userColor,
+    cursorPosition.line,
+    cursorPosition.column,
+    activeFileId,
+  ]);
+
+  /* =======================================================
      SWITCH ACTIVE FILE
      ======================================================= */
 
@@ -719,6 +893,15 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
 
       if (socket?.connected) {
         socket.emit("active-file-change", {
+          roomId,
+          fileId,
+        });
+      }
+
+      if (browserChannelRef.current) {
+        browserChannelRef.current.postMessage({
+          type: "active-file",
+          senderId: browserClientIdRef.current,
           roomId,
           fileId,
         });
@@ -851,8 +1034,6 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     const spaceWidth = context
       ? context.measureText(" ").width
       : 7.8;
-    const tabWidth = Math.max(spaceWidth, spaceWidth * tabSize);
-
     /*
      * Canvas text metrics do not treat tab characters like a textarea
      * with CSS tab-size. Measure the text one character at a time so
