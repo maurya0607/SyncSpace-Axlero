@@ -10,9 +10,8 @@ function Logo() {
   );
 }
 
-function LandingPage({ onLaunch }) {
+function LandingPage({ onLaunch, onSignIn, onSignUp }) {
   const [roomId, setRoomId] = useState("");
-
   const createRoom = () => {
     const id = Math.random().toString(36).slice(2, 8);
     onLaunch(id);
@@ -33,7 +32,10 @@ function LandingPage({ onLaunch }) {
           <a href="#workflow">How it works</a>
           <a href="#about">About</a>
         </nav>
-        <button className="nav-launch" onClick={createRoom}>Launch room <span>↗</span></button>
+        <div className="landing-auth-actions">
+          <button className="nav-signin" onClick={onSignIn}>Sign in</button>
+          <button className="nav-launch" onClick={onSignUp}>Get started <span>↗</span></button>
+        </div>
       </header>
 
       <main>
@@ -63,6 +65,8 @@ function LandingPage({ onLaunch }) {
                 <button type="submit">Join</button>
               </form>
             </div>
+
+            <div className="hero-auth-note">Already have an account? <button type="button" onClick={onSignIn}>Sign in</button></div>
 
             <div className="hero-note">
               <span className="mini-avatar">C</span>
