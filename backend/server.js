@@ -21,6 +21,8 @@ const {
 const {
   getDocumentState,
   applyDocumentUpdate,
+  loadDocument,
+  saveDocument
 } = require("./yjs/yjsManager");
 
 const app = express();
@@ -63,6 +65,9 @@ const roomCodeState = new Map();
  */
 const initialCodeSynced = new Set();
 
+// Tracks rooms with unsaved Yjs changes
+const dirtyYjsRooms = new Set();
+
 /* =========================================================
    BASIC ROUTE
    ========================================================= */
@@ -85,14 +90,15 @@ io.on("connection", (socket) => {
     socket.join(roomId);
 
     addUser(roomId, socket.id);
+
     await Room.findOneAndUpdate(
-  { roomId },
-  {
-    roomId,
-    activeUsers: getUsers(roomId).length,
-  },
-  { upsert: true, new: true }
-);
+      { roomId },
+      {
+        roomId,
+        activeUsers: getUsers(roomId).length,
+      },
+      { upsert: true, new: true }
+    );
 
     console.log(`${socket.id} joined room: ${roomId}`);
 
@@ -119,12 +125,13 @@ io.on("connection", (socket) => {
     socket.leave(roomId);
 
     removeUser(roomId, socket.id);
+
     await Room.findOneAndUpdate(
-  { roomId },
-  {
-    activeUsers: getUsers(roomId).length,
-  }
-);
+      { roomId },
+      {
+        activeUsers: getUsers(roomId).length,
+      }
+    );
 
     /*
      * Allow this socket to receive initial state again
@@ -180,21 +187,30 @@ io.on("connection", (socket) => {
 
   socket.on(
     "yjs-sync-request",
-    (roomId) => {
+    async (roomId) => {
       if (!roomId) {
         return;
       }
 
-      const state = getDocumentState(roomId);
+      try {
+        // Load the saved Yjs state from MongoDB if available
+        await loadDocument(roomId);
 
-      socket.emit("yjs-sync", {
-        roomId,
-        update: state,
-      });
+        // Get the current state of the Yjs document
+        const state = getDocumentState(roomId);
 
-      console.log(
-        `Yjs state sent to ${socket.id} for room: ${roomId}`
-      );
+        // Send the current Yjs state to the requesting client
+        socket.emit("yjs-sync", {
+          roomId,
+          update: state,
+        });
+
+        console.log(
+          `Yjs state loaded and sent to ${socket.id} for room: ${roomId}`
+        );
+      } catch (error) {
+        console.error("Yjs sync error:", error);
+      }
     }
   );
 
@@ -211,6 +227,9 @@ io.on("connection", (socket) => {
             roomId,
             update
           );
+
+        // Mark the room as needing persistence
+        dirtyYjsRooms.add(roomId);
 
         socket.to(roomId).emit(
           "yjs-update",
@@ -551,6 +570,42 @@ io.on("connection", (socket) => {
 });
 
 /* =========================================================
+   YJS PERSISTENCE
+   ========================================================= */
+
+// Save changed Yjs documents to MongoDB every 5 seconds.
+const YJS_PERSISTENCE_INTERVAL = 5000;
+
+const persistenceTimer = setInterval(
+  async () => {
+    if (dirtyYjsRooms.size === 0) {
+      return;
+    }
+
+    const roomsToSave = [...dirtyYjsRooms];
+
+    for (const roomId of roomsToSave) {
+      try {
+        await saveDocument(roomId);
+
+        // Mark the room as clean only after a successful save.
+        dirtyYjsRooms.delete(roomId);
+
+        console.log(
+          `Yjs state persisted for room: ${roomId}`
+        );
+      } catch (error) {
+        console.error(
+          `Failed to persist Yjs state for room ${roomId}:`,
+          error
+        );
+      }
+    }
+  },
+  YJS_PERSISTENCE_INTERVAL
+);
+
+/* =========================================================
    SERVER START
    ========================================================= */
 
@@ -558,7 +613,7 @@ const PORT =
   process.env.PORT || 3001;
 
 connectDB().then(() => {
-    server.listen(PORT, () => {
-        console.log(`SyncSpace server running on port ${PORT}`);
-    });
+  server.listen(PORT, () => {
+    console.log(`SyncSpace server running on port ${PORT}`);
+  });
 });
