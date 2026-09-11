@@ -24,6 +24,8 @@ const {
 const {
   getDocumentState,
   applyDocumentUpdate,
+  loadDocument,
+  saveDocument
 } = require("./yjs/yjsManager");
 
 const app = express();
@@ -50,11 +52,12 @@ io.use((socket, next) => {
   try {
     const token = socket.handshake.auth.token;
 
-    if (!token) {
-      return next(
-        new Error("Authentication token required")
-      );
-    }
+// Tracks rooms with unsaved Yjs changes
+const dirtyYjsRooms = new Set();
+
+/* =========================================================
+   BASIC ROUTE
+   ========================================================= */
 
     const decoded = jwt.verify(
       token,
@@ -117,6 +120,7 @@ io.on("connection", (socket) => {
     await Room.findOneAndUpdate(
       { roomId },
       {
+        roomId,
         activeUsers: getUsers(roomId).length,
       },
       { upsert: true, new: true }
@@ -151,12 +155,13 @@ io.on("connection", (socket) => {
     socket.leave(roomId);
 
     removeUser(roomId, socket.id);
+
     await Room.findOneAndUpdate(
-  { roomId },
-  {
-    activeUsers: getUsers(roomId).length,
-  }
-);
+      { roomId },
+      {
+        activeUsers: getUsers(roomId).length,
+      }
+    );
 
     console.log(`${socket.id} left room: ${roomId}`);
 
@@ -188,29 +193,177 @@ io.on("connection", (socket) => {
   socket.on("yjs-sync-request", (roomId) => {
     const state = getDocumentState(roomId);
 
-    socket.emit("yjs-sync", {
-      roomId,
-      update: state,
-    });
+  socket.on(
+    "yjs-sync-request",
+    async (roomId) => {
+      if (!roomId) {
+        return;
+      }
 
-    console.log(`Yjs state sent to ${socket.id} for room: ${roomId}`);
-  });
+      try {
+        // Load the saved Yjs state from MongoDB if available
+        await loadDocument(roomId);
 
-  socket.on("yjs-update", ({ roomId, update }) => {
-    try {
-      const appliedUpdate = applyDocumentUpdate(roomId, update);
+        // Get the current state of the Yjs document
+        const state = getDocumentState(roomId);
 
-      socket.to(roomId).emit("yjs-update", {
-        socketId: socket.id,
-        roomId,
-        update: appliedUpdate,
-      });
+        // Send the current Yjs state to the requesting client
+        socket.emit("yjs-sync", {
+          roomId,
+          update: state,
+        });
 
-      console.log(`Yjs update synchronized in room: ${roomId}`);
-    } catch (error) {
-      console.error("Yjs update error:", error);
+        console.log(
+          `Yjs state loaded and sent to ${socket.id} for room: ${roomId}`
+        );
+      } catch (error) {
+        console.error("Yjs sync error:", error);
+      }
     }
-  });
+  );
+
+  socket.on(
+    "yjs-update",
+    ({ roomId, update } = {}) => {
+      if (!roomId || !update) {
+        return;
+      }
+
+      try {
+        const appliedUpdate =
+          applyDocumentUpdate(
+            roomId,
+            update
+          );
+
+        // Mark the room as needing persistence
+        dirtyYjsRooms.add(roomId);
+
+        socket.to(roomId).emit(
+          "yjs-update",
+          {
+            socketId: socket.id,
+            roomId,
+            update: appliedUpdate,
+          }
+        );
+
+        console.log(
+          `Yjs update synchronized in room: ${roomId}`
+        );
+      } catch (error) {
+        console.error(
+          "Yjs update error:",
+          error
+        );
+      }
+    }
+  );
+
+  /* =======================================================
+     AWARENESS / CURSOR SYNC
+     ======================================================= */
+
+  socket.on(
+    "awareness-update",
+    ({ roomId, awareness } = {}) => {
+      if (!roomId) {
+        return;
+      }
+
+      socket.to(roomId).emit(
+        "awareness-update",
+        {
+          socketId: socket.id,
+          awareness,
+        }
+      );
+    }
+  );
+
+  socket.on(
+    "awareness-remove",
+    ({ roomId } = {}) => {
+      if (!roomId) {
+        return;
+      }
+
+      socket.to(roomId).emit(
+        "awareness-remove",
+        {
+          socketId: socket.id,
+        }
+      );
+    }
+  );
+
+  /* =======================================================
+     CODE SYNC REQUEST
+     ======================================================= */
+
+  socket.on(
+    "code-sync-request",
+    (roomId) => {
+      if (!roomId) {
+        return;
+      }
+
+      /*
+       * IMPORTANT:
+       *
+       * Only send the initial code state once to this
+       * socket for this room.
+       *
+       * This prevents a frontend effect from repeatedly
+       * requesting the same code and overwriting local typing.
+       */
+
+      const syncKey =
+        `${socket.id}:${roomId}`;
+
+      if (initialCodeSynced.has(syncKey)) {
+        console.log(
+          `Initial code already synced to ${socket.id} for room: ${roomId}`
+        );
+
+        return;
+      }
+
+      initialCodeSynced.add(syncKey);
+
+      const currentState =
+        roomCodeState.get(roomId);
+
+      if (currentState) {
+        socket.emit(
+          "code-sync",
+          {
+            roomId,
+            files: currentState.files,
+            activeFileId:
+              currentState.activeFileId,
+            revision:
+              currentState.revision || 0,
+          }
+        );
+
+        console.log(
+          `Initial code state sent to ${socket.id} for room: ${roomId}`
+        );
+      } else {
+        socket.emit(
+          "code-sync-empty",
+          {
+            roomId,
+          }
+        );
+
+        console.log(
+          `No code state exists yet for room: ${roomId}`
+        );
+      }
+    }
+  );
 
   // ===========================
   // Awareness / Cursor Sync
@@ -249,19 +402,50 @@ io.on("connection", (socket) => {
         socketId: socket.id,
       });
 
-      socket.to(roomId).emit("awareness-remove", {
-        socketId: socket.id,
-      });
-    });
+/* =========================================================
+   YJS PERSISTENCE
+   ========================================================= */
 
-    console.log("User disconnected:", socket.id);
-  });
-});
+// Save changed Yjs documents to MongoDB every 5 seconds.
+const YJS_PERSISTENCE_INTERVAL = 5000;
+
+const persistenceTimer = setInterval(
+  async () => {
+    if (dirtyYjsRooms.size === 0) {
+      return;
+    }
+
+    const roomsToSave = [...dirtyYjsRooms];
+
+    for (const roomId of roomsToSave) {
+      try {
+        await saveDocument(roomId);
+
+        // Mark the room as clean only after a successful save.
+        dirtyYjsRooms.delete(roomId);
+
+        console.log(
+          `Yjs state persisted for room: ${roomId}`
+        );
+      } catch (error) {
+        console.error(
+          `Failed to persist Yjs state for room ${roomId}:`,
+          error
+        );
+      }
+    }
+  },
+  YJS_PERSISTENCE_INTERVAL
+);
+
+/* =========================================================
+   SERVER START
+   ========================================================= */
 
 const PORT = process.env.PORT || 3001;
 
 connectDB().then(() => {
-    server.listen(PORT, () => {
-        console.log(`SyncSpace server running on port ${PORT}`);
-    });
+  server.listen(PORT, () => {
+    console.log(`SyncSpace server running on port ${PORT}`);
+  });
 });
