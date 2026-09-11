@@ -52,12 +52,12 @@ io.use((socket, next) => {
   try {
     const token = socket.handshake.auth.token;
 
-// Tracks rooms with unsaved Yjs changes
-const dirtyYjsRooms = new Set();
+    // Tracks rooms with unsaved Yjs changes
+    const dirtyYjsRooms = new Set();
 
-/* =========================================================
-   BASIC ROUTE
-   ========================================================= */
+    /* =========================================================
+       BASIC ROUTE
+       ========================================================= */
 
     const decoded = jwt.verify(
       token,
@@ -81,72 +81,72 @@ io.on("connection", (socket) => {
   // ===========================
   // Join Room
   // ===========================
-   socket.on("join-room", async (roomId) => {
-  try {
-    // User must be authenticated
-    if (!socket.user) {
-      socket.emit("join-error", {
-        message: "Authentication required",
+  socket.on("join-room", async (roomId) => {
+    try {
+      // User must be authenticated
+      if (!socket.user) {
+        socket.emit("join-error", {
+          message: "Authentication required",
+        });
+        return;
+      }
+
+      const room = await Room.findOne({ roomId });
+
+      if (!room) {
+        socket.emit("join-error", {
+          message: "Room not found",
+        });
+        return;
+      }
+
+      // Check whether the user is invited
+      const isInvited = room.invitedUsers.some(
+        (userId) => userId.toString() === socket.user.userId
+      );
+
+      if (!isInvited) {
+        socket.emit("join-error", {
+          message: "You are not invited to this room",
+        });
+        return;
+      }
+
+      // User is authorized → join room
+      socket.join(roomId);
+
+      addUser(roomId, socket.id);
+
+      await Room.findOneAndUpdate(
+        { roomId },
+        {
+          roomId,
+          activeUsers: getUsers(roomId).length,
+        },
+        { upsert: true, new: true }
+      );
+
+      console.log(
+        `${socket.user.username} (${socket.id}) joined room: ${roomId}`
+      );
+
+      io.to(roomId).emit(
+        "users-in-room",
+        getUsers(roomId)
+      );
+
+      socket.to(roomId).emit("user-joined", {
+        socketId: socket.id,
       });
-      return;
-    }
 
-    const room = await Room.findOne({ roomId });
+    } catch (error) {
+      console.error("Join room error:", error);
 
-    if (!room) {
       socket.emit("join-error", {
-        message: "Room not found",
+        message: "Unable to join room",
       });
-      return;
     }
-
-    // Check whether the user is invited
-    const isInvited = room.invitedUsers.some(
-      (userId) => userId.toString() === socket.user.userId
-    );
-
-    if (!isInvited) {
-      socket.emit("join-error", {
-        message: "You are not invited to this room",
-      });
-      return;
-    }
-
-    // User is authorized → join room
-    socket.join(roomId);
-
-    addUser(roomId, socket.id);
-
-    await Room.findOneAndUpdate(
-      { roomId },
-      {
-        roomId,
-        activeUsers: getUsers(roomId).length,
-      },
-      { upsert: true, new: true }
-    );
-
-    console.log(
-      `${socket.user.username} (${socket.id}) joined room: ${roomId}`
-    );
-
-    io.to(roomId).emit(
-      "users-in-room",
-      getUsers(roomId)
-    );
-
-    socket.to(roomId).emit("user-joined", {
-      socketId: socket.id,
-    });
-
-  } catch (error) {
-    console.error("Join room error:", error);
-
-    socket.emit("join-error", {
-      message: "Unable to join room",
-    });
-  }
-});
+  });
 
   // ===========================
   // Leave Room
@@ -193,215 +193,218 @@ io.on("connection", (socket) => {
   socket.on("yjs-sync-request", (roomId) => {
     const state = getDocumentState(roomId);
 
-  socket.on(
-    "yjs-sync-request",
-    async (roomId) => {
-      if (!roomId) {
-        return;
-      }
+    socket.on(
+      "yjs-sync-request",
+      async (roomId) => {
+        if (!roomId) {
+          return;
+        }
 
-      try {
-        // Load the saved Yjs state from MongoDB if available
-        await loadDocument(roomId);
+        try {
+          // Load the saved Yjs state from MongoDB if available
+          await loadDocument(roomId);
 
-        // Get the current state of the Yjs document
-        const state = getDocumentState(roomId);
+          // Get the current state of the Yjs document
+          const state = getDocumentState(roomId);
 
-        // Send the current Yjs state to the requesting client
-        socket.emit("yjs-sync", {
-          roomId,
-          update: state,
-        });
-
-        console.log(
-          `Yjs state loaded and sent to ${socket.id} for room: ${roomId}`
-        );
-      } catch (error) {
-        console.error("Yjs sync error:", error);
-      }
-    }
-  );
-
-  socket.on(
-    "yjs-update",
-    ({ roomId, update } = {}) => {
-      if (!roomId || !update) {
-        return;
-      }
-
-      try {
-        const appliedUpdate =
-          applyDocumentUpdate(
+          // Send the current Yjs state to the requesting client
+          socket.emit("yjs-sync", {
             roomId,
-            update
+            update: state,
+          });
+
+          console.log(
+            `Yjs state loaded and sent to ${socket.id} for room: ${roomId}`
           );
-
-        // Mark the room as needing persistence
-        dirtyYjsRooms.add(roomId);
-
-        socket.to(roomId).emit(
-          "yjs-update",
-          {
-            socketId: socket.id,
-            roomId,
-            update: appliedUpdate,
-          }
-        );
-
-        console.log(
-          `Yjs update synchronized in room: ${roomId}`
-        );
-      } catch (error) {
-        console.error(
-          "Yjs update error:",
-          error
-        );
-      }
-    }
-  );
-
-  /* =======================================================
-     AWARENESS / CURSOR SYNC
-     ======================================================= */
-
-  socket.on(
-    "awareness-update",
-    ({ roomId, awareness } = {}) => {
-      if (!roomId) {
-        return;
-      }
-
-      socket.to(roomId).emit(
-        "awareness-update",
-        {
-          socketId: socket.id,
-          awareness,
+        } catch (error) {
+          console.error("Yjs sync error:", error);
         }
-      );
-    }
-  );
-
-  socket.on(
-    "awareness-remove",
-    ({ roomId } = {}) => {
-      if (!roomId) {
-        return;
       }
-
-      socket.to(roomId).emit(
-        "awareness-remove",
-        {
-          socketId: socket.id,
-        }
-      );
-    }
-  );
-
-  /* =======================================================
-     CODE SYNC REQUEST
-     ======================================================= */
-
-  socket.on(
-    "code-sync-request",
-    (roomId) => {
-      if (!roomId) {
-        return;
-      }
-
-      /*
-       * IMPORTANT:
-       *
-       * Only send the initial code state once to this
-       * socket for this room.
-       *
-       * This prevents a frontend effect from repeatedly
-       * requesting the same code and overwriting local typing.
-       */
-
-      const syncKey =
-        `${socket.id}:${roomId}`;
-
-      if (initialCodeSynced.has(syncKey)) {
-        console.log(
-          `Initial code already synced to ${socket.id} for room: ${roomId}`
-        );
-
-        return;
-      }
-
-      initialCodeSynced.add(syncKey);
-
-      const currentState =
-        roomCodeState.get(roomId);
-
-      if (currentState) {
-        socket.emit(
-          "code-sync",
-          {
-            roomId,
-            files: currentState.files,
-            activeFileId:
-              currentState.activeFileId,
-            revision:
-              currentState.revision || 0,
-          }
-        );
-
-        console.log(
-          `Initial code state sent to ${socket.id} for room: ${roomId}`
-        );
-      } else {
-        socket.emit(
-          "code-sync-empty",
-          {
-            roomId,
-          }
-        );
-
-        console.log(
-          `No code state exists yet for room: ${roomId}`
-        );
-      }
-    }
-  );
-
-  // ===========================
-  // Awareness / Cursor Sync
-  // ===========================
-  socket.on("awareness-update", ({ roomId, awareness }) => {
-    socket.to(roomId).emit("awareness-update", {
-      socketId: socket.id,
-      awareness,
-    });
-
-    console.log(`Awareness update from ${socket.id} in room: ${roomId}`);
-  });
-
-  socket.on("awareness-remove", ({ roomId }) => {
-    socket.to(roomId).emit("awareness-remove", {
-      socketId: socket.id,
-    });
-
-    console.log(`Awareness removed for ${socket.id} from room: ${roomId}`);
-  });
-
-  // ===========================
-  // Disconnect
-  // ===========================
-  socket.on("disconnect", () => {
-    const joinedRooms = [...socket.rooms].filter(
-      (room) => room !== socket.id
     );
 
-    joinedRooms.forEach((roomId) => {
-      removeUser(roomId, socket.id);
+    socket.on(
+      "yjs-update",
+      ({ roomId, update } = {}) => {
+        if (!roomId || !update) {
+          return;
+        }
 
-      io.to(roomId).emit("users-in-room", getUsers(roomId));
+        try {
+          const appliedUpdate =
+            applyDocumentUpdate(
+              roomId,
+              update
+            );
 
-      socket.to(roomId).emit("user-left", {
+          // Mark the room as needing persistence
+          dirtyYjsRooms.add(roomId);
+
+          socket.to(roomId).emit(
+            "yjs-update",
+            {
+              socketId: socket.id,
+              roomId,
+              update: appliedUpdate,
+            }
+          );
+
+          console.log(
+            `Yjs update synchronized in room: ${roomId}`
+          );
+        } catch (error) {
+          console.error(
+            "Yjs update error:",
+            error
+          );
+        }
+      }
+    );
+
+    /* =======================================================
+       AWARENESS / CURSOR SYNC
+       ======================================================= */
+
+    socket.on(
+      "awareness-update",
+      ({ roomId, awareness } = {}) => {
+        if (!roomId) {
+          return;
+        }
+
+        socket.to(roomId).emit(
+          "awareness-update",
+          {
+            socketId: socket.id,
+            awareness,
+          }
+        );
+      }
+    );
+
+    socket.on(
+      "awareness-remove",
+      ({ roomId } = {}) => {
+        if (!roomId) {
+          return;
+        }
+
+        socket.to(roomId).emit(
+          "awareness-remove",
+          {
+            socketId: socket.id,
+          }
+        );
+      }
+    );
+
+    /* =======================================================
+       CODE SYNC REQUEST
+       ======================================================= */
+
+    socket.on(
+      "code-sync-request",
+      (roomId) => {
+        if (!roomId) {
+          return;
+        }
+
+        /*
+         * IMPORTANT:
+         *
+         * Only send the initial code state once to this
+         * socket for this room.
+         *
+         * This prevents a frontend effect from repeatedly
+         * requesting the same code and overwriting local typing.
+         */
+
+        const syncKey =
+          `${socket.id}:${roomId}`;
+
+        if (initialCodeSynced.has(syncKey)) {
+          console.log(
+            `Initial code already synced to ${socket.id} for room: ${roomId}`
+          );
+
+          return;
+        }
+
+        initialCodeSynced.add(syncKey);
+
+        const currentState =
+          roomCodeState.get(roomId);
+
+        if (currentState) {
+          socket.emit(
+            "code-sync",
+            {
+              roomId,
+              files: currentState.files,
+              activeFileId:
+                currentState.activeFileId,
+              revision:
+                currentState.revision || 0,
+            }
+          );
+
+          console.log(
+            `Initial code state sent to ${socket.id} for room: ${roomId}`
+          );
+        } else {
+          socket.emit(
+            "code-sync-empty",
+            {
+              roomId,
+            }
+          );
+
+          console.log(
+            `No code state exists yet for room: ${roomId}`
+          );
+        }
+      }
+    );
+
+    // ===========================
+    // Awareness / Cursor Sync
+    // ===========================
+    socket.on("awareness-update", ({ roomId, awareness }) => {
+      socket.to(roomId).emit("awareness-update", {
+        socketId: socket.id,
+        awareness,
+      });
+
+      console.log(`Awareness update from ${socket.id} in room: ${roomId}`);
+    });
+
+    socket.on("awareness-remove", ({ roomId }) => {
+      socket.to(roomId).emit("awareness-remove", {
         socketId: socket.id,
       });
 
+      console.log(`Awareness removed for ${socket.id} from room: ${roomId}`);
+    });
+
+    // ===========================
+    // Disconnect
+    // ===========================
+    socket.on("disconnect", () => {
+      const joinedRooms = [...socket.rooms].filter(
+        (room) => room !== socket.id
+      );
+
+      joinedRooms.forEach((roomId) => {
+        removeUser(roomId, socket.id);
+
+        io.to(roomId).emit("users-in-room", getUsers(roomId));
+
+        socket.to(roomId).emit("user-left", {
+          socketId: socket.id,
+        });
+      });
+    });
+  });
+});
 /* =========================================================
    YJS PERSISTENCE
    ========================================================= */
