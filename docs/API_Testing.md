@@ -209,4 +209,4 @@ Sign Up → Login → Login successful → Username + Create Room + Logout → L
 6. **Logged Out State**:
    - Navigation bar resets to show guest options: **Sign In** and **Sign Up**.
    - Protected routes and room actions require re-authentication.
-
+
