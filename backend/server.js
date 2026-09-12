@@ -12,14 +12,14 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/auth");
 const roomRoutes = require("./routes/room");
 
-// Presence System (Khushi)
+// Presence System
 const {
   addUser,
   removeUser,
   getUsers,
 } = require("./services/presence");
 
-// Yjs / CRDT (Akshaya)
+// Yjs / CRDT
 const {
   getDocumentState,
   applyDocumentUpdate,
@@ -59,6 +59,7 @@ const initialCodeSynced = new Set();
    YJS PERSISTENCE STATE
    ========================================================= */
 
+// Tracks rooms with unsaved Yjs changes
 const dirtyYjsRooms = new Set();
 
 const YJS_PERSISTENCE_INTERVAL = 5000;
@@ -103,17 +104,17 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // ===========================
-  // Join Room
-  // ===========================
+  /* =======================================================
+     JOIN ROOM
+     ======================================================= */
 
   socket.on("join-room", async (roomId) => {
     try {
+      // User must be authenticated
       if (!socket.user) {
         socket.emit("join-error", {
           message: "Authentication required",
         });
-
         return;
       }
 
@@ -123,10 +124,10 @@ io.on("connection", (socket) => {
         socket.emit("join-error", {
           message: "Room not found",
         });
-
         return;
       }
 
+      // Check whether the user is invited
       const isInvited = room.invitedUsers.some(
         (userId) =>
           userId.toString() ===
@@ -137,10 +138,10 @@ io.on("connection", (socket) => {
         socket.emit("join-error", {
           message: "You are not invited to this room",
         });
-
         return;
       }
 
+      // User is authorized
       socket.join(roomId);
 
       addUser(roomId, socket.id);
@@ -170,10 +171,7 @@ io.on("connection", (socket) => {
         socketId: socket.id,
       });
     } catch (error) {
-      console.error(
-        "Join room error:",
-        error
-      );
+      console.error("Join room error:", error);
 
       socket.emit("join-error", {
         message: "Unable to join room",
@@ -181,18 +179,15 @@ io.on("connection", (socket) => {
     }
   });
 
-  // ===========================
-  // Leave Room
-  // ===========================
+  /* =======================================================
+     LEAVE ROOM
+     ======================================================= */
 
   socket.on("leave-room", async (roomId) => {
     try {
       socket.leave(roomId);
 
-      removeUser(
-        roomId,
-        socket.id
-      );
+      removeUser(roomId, socket.id);
 
       initialCodeSynced.delete(
         `${socket.id}:${roomId}`
@@ -201,8 +196,7 @@ io.on("connection", (socket) => {
       await Room.findOneAndUpdate(
         { roomId },
         {
-          activeUsers:
-            getUsers(roomId).length,
+          activeUsers: getUsers(roomId).length,
         }
       );
 
@@ -215,12 +209,9 @@ io.on("connection", (socket) => {
         getUsers(roomId)
       );
 
-      socket.to(roomId).emit(
-        "user-left",
-        {
-          socketId: socket.id,
-        }
-      );
+      socket.to(roomId).emit("user-left", {
+        socketId: socket.id,
+      });
 
       socket.to(roomId).emit(
         "awareness-remove",
@@ -269,18 +260,18 @@ io.on("connection", (socket) => {
       }
 
       try {
+        // Load saved Yjs state from MongoDB
         await loadDocument(roomId);
 
+        // Get current Yjs state
         const state =
           getDocumentState(roomId);
 
-        socket.emit(
-          "yjs-sync",
-          {
-            roomId,
-            update: state,
-          }
-        );
+        // Send state to requesting client
+        socket.emit("yjs-sync", {
+          roomId,
+          update: state,
+        });
 
         console.log(
           `Yjs state loaded and sent to ${socket.id} for room: ${roomId}`
@@ -308,8 +299,10 @@ io.on("connection", (socket) => {
             update
           );
 
+        // Mark room for persistence
         dirtyYjsRooms.add(roomId);
 
+        // Send update to other users
         socket.to(roomId).emit(
           "yjs-update",
           {
@@ -349,6 +342,10 @@ io.on("connection", (socket) => {
           awareness,
         }
       );
+
+      console.log(
+        `Awareness update from ${socket.id} in room: ${roomId}`
+      );
     }
   );
 
@@ -365,6 +362,10 @@ io.on("connection", (socket) => {
           socketId: socket.id,
         }
       );
+
+      console.log(
+        `Awareness removed for ${socket.id} from room: ${roomId}`
+      );
     }
   );
 
@@ -379,14 +380,15 @@ io.on("connection", (socket) => {
         return;
       }
 
+      /*
+       * Only send initial code once to each
+       * socket for each room.
+       */
+
       const syncKey =
         `${socket.id}:${roomId}`;
 
-      if (
-        initialCodeSynced.has(
-          syncKey
-        )
-      ) {
+      if (initialCodeSynced.has(syncKey)) {
         console.log(
           `Initial code already synced to ${socket.id} for room: ${roomId}`
         );
@@ -394,9 +396,7 @@ io.on("connection", (socket) => {
         return;
       }
 
-      initialCodeSynced.add(
-        syncKey
-      );
+      initialCodeSynced.add(syncKey);
 
       const currentState =
         roomCodeState.get(roomId);
@@ -451,9 +451,7 @@ io.on("connection", (socket) => {
       }
 
       const previousState =
-        roomCodeState.get(
-          roomId
-        );
+        roomCodeState.get(roomId);
 
       const previousRevision =
         previousState?.revision || 0;
@@ -512,17 +510,14 @@ io.on("connection", (socket) => {
       }
 
       const currentState =
-        roomCodeState.get(
-          roomId
-        );
+        roomCodeState.get(roomId);
 
       if (currentState) {
         roomCodeState.set(
           roomId,
           {
             ...currentState,
-            activeFileId:
-              fileId,
+            activeFileId: fileId,
           }
         );
       }
@@ -555,20 +550,18 @@ io.on("connection", (socket) => {
             room !== socket.id
         );
 
-      for (
-        const key of initialCodeSynced
-      ) {
+      // Remove sync markers belonging to this socket
+      for (const key of initialCodeSynced) {
         if (
           key.startsWith(
             `${socket.id}:`
           )
         ) {
-          initialCodeSynced.delete(
-            key
-          );
+          initialCodeSynced.delete(key);
         }
       }
 
+      // Remove user from all rooms
       joinedRooms.forEach(
         (roomId) => {
           removeUser(
@@ -584,16 +577,14 @@ io.on("connection", (socket) => {
           socket.to(roomId).emit(
             "user-left",
             {
-              socketId:
-                socket.id,
+              socketId: socket.id,
             }
           );
 
           socket.to(roomId).emit(
             "awareness-remove",
             {
-              socketId:
-                socket.id,
+              socketId: socket.id,
             }
           );
         }
@@ -623,9 +614,7 @@ const persistenceTimer =
       }
 
       const roomsToSave =
-        [
-          ...dirtyYjsRooms,
-        ];
+        [...dirtyYjsRooms];
 
       for (
         const roomId of roomsToSave
@@ -635,6 +624,7 @@ const persistenceTimer =
             roomId
           );
 
+          // Mark clean only after successful save
           dirtyYjsRooms.delete(
             roomId
           );
