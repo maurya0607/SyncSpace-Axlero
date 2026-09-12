@@ -171,4 +171,42 @@ The purpose of API testing is to verify that the backend services are working co
 - Socket.io server initialized with JWT authentication middleware.
 - Auth routes (register/login) implemented and connected to MongoDB.
 - Room routes (create/join) implemented with auth middleware protection.
-- All Socket.io events implemented and handling errors gracefully.
+- All Socket.io events implemented and handling errors gracefully.
+
+---
+
+## Latest Task: Complete Authentication & Navigation Flow
+
+```text
+Sign Up → Login → Login successful → Username + Create Room + Logout → Logout → Sign In + Sign Up
+```
+
+### Flow Breakdown
+
+1. **Sign Up (`/signup` / `/register`)**:
+   - User inputs username and password.
+   - Request sent to `POST /api/auth/register`.
+   - Password hashed via `bcryptjs` and user record saved in MongoDB.
+
+2. **Login (`/signin` / `/login`)**:
+   - User provides credentials.
+   - Request sent to `POST /api/auth/login`.
+   - Credentials validated against database record.
+
+3. **Login Successful**:
+   - JWT token generated with `process.env.JWT_SECRET` and returned to client.
+   - User credentials & token stored in browser session (`localStorage` / `sessionStorage`).
+
+4. **Authenticated State**:
+   - UI updates to display logged-in **Username**.
+   - Authenticated actions unlocked: **Create Room**, Join Room, and access Collaborative Workspace.
+   - **Logout** button made accessible in the navigation bar/header.
+
+5. **Logout Action**:
+   - Clears stored JWT token and active session.
+   - Resets application state.
+
+6. **Logged Out State**:
+   - Navigation bar resets to show guest options: **Sign In** and **Sign Up**.
+   - Protected routes and room actions require re-authentication.
+
