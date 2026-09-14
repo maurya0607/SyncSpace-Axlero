@@ -26,11 +26,11 @@ SyncSpace-Axlero/
 
 ✔ Documentation created.
 
-⏳ Backend development in progress.
+✔ Backend development in progress.
 
-⏳ Database implementation pending.
+✔ Database implementation pending.
 
-⏳ API integration pending.
+✔ API integration pending.
 
 
 # Project Structure

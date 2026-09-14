@@ -2,33 +2,26 @@ const jwt = require("jsonwebtoken");
 
 const authenticateToken = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization || "";
+    const [scheme, token] = authHeader.split(" ");
 
-    if (!authHeader) {
+    if (scheme !== "Bearer" || !token) {
       return res.status(401).json({
-        message: "Authentication token required",
+        message: "Please log in to continue.",
       });
     }
 
-    const token = authHeader.split(" ")[1];
-
-    if (!token) {
-      return res.status(401).json({
-        message: "Invalid authorization format",
+    if (!process.env.JWT_SECRET) {
+      return res.status(500).json({
+        message: "Authentication is not configured on the server.",
       });
     }
 
-    const decoded = jwt.verify(
-      token,
-      process.env.JWT_SECRET
-    );
-
-    req.user = decoded;
-
-    next();
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    return next();
   } catch (error) {
     return res.status(403).json({
-      message: "Invalid or expired token",
+      message: "Your session has expired. Please sign in again.",
     });
   }
 };
