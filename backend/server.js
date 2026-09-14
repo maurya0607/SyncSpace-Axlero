@@ -1,14 +1,16 @@
-const Room = require("./models/Room");
 const dotenv = require("dotenv");
-const connectDB = require("./config/db");
-
 dotenv.config();
-connectDB();
 
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const jwt = require("jsonwebtoken");
+
+const Room = require("./models/Room");
+const connectDB = require("./config/db");
+const authRoutes = require("./routes/auth");
+const roomRoutes = require("./routes/room");
 
 // Presence System
 const {
@@ -21,12 +23,20 @@ const {
 const {
   getDocumentState,
   applyDocumentUpdate,
+  loadDocument,
+  saveDocument,
 } = require("./yjs/yjsManager");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+// Authentication APIs
+app.use("/api/auth", authRoutes);
+
+// Room APIs
+app.use("/api/rooms", roomRoutes);
 
 const server = http.createServer(app);
 
@@ -41,27 +51,18 @@ const io = new Server(server, {
    COLLABORATIVE CODE STATE
    ========================================================= */
 
-/*
- * Stores the latest code state for every room.
- *
- * roomCodeState = {
- *   roomId: {
- *      files: [],
- *      activeFileId: "...",
- *      revision: 1
- *   }
- * }
- */
-
 const roomCodeState = new Map();
 
-/*
- * Keeps track of which sockets have already received
- * the initial code state for a room.
- *
- * This prevents continuous code-sync-request loops.
- */
 const initialCodeSynced = new Set();
+
+/* =========================================================
+   YJS PERSISTENCE STATE
+   ========================================================= */
+
+// Tracks rooms with unsaved Yjs changes
+const dirtyYjsRooms = new Set();
+
+const YJS_PERSISTENCE_INTERVAL = 5000;
 
 /* =========================================================
    BASIC ROUTE
@@ -72,85 +73,158 @@ app.get("/", (req, res) => {
 });
 
 /* =========================================================
+   SOCKET.IO AUTHENTICATION
+   ========================================================= */
+
+io.use((socket, next) => {
+  try {
+    const token = socket.handshake.auth?.token;
+
+    if (!token) {
+      return next(new Error("Authentication required"));
+    }
+
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
+
+    socket.user = decoded;
+
+    next();
+  } catch (error) {
+    next(new Error("Invalid or expired token"));
+  }
+});
+
+/* =========================================================
    SOCKET.IO
    ========================================================= */
 
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
 
-  // ===========================
-  // Join Room
-  // ===========================
+  /* =======================================================
+     JOIN ROOM
+     ======================================================= */
+
   socket.on("join-room", async (roomId) => {
-    socket.join(roomId);
+    try {
+      // User must be authenticated
+      if (!socket.user) {
+        socket.emit("join-error", {
+          message: "Authentication required",
+        });
+        return;
+      }
 
-    addUser(roomId, socket.id);
-    await Room.findOneAndUpdate(
-  { roomId },
-  {
-    roomId,
-    activeUsers: getUsers(roomId).length,
-  },
-  { upsert: true, new: true }
-);
+      const room = await Room.findOne({ roomId });
 
-    console.log(`${socket.id} joined room: ${roomId}`);
+      if (!room) {
+        socket.emit("join-error", {
+          message: "Room not found",
+        });
+        return;
+      }
 
-    /*
-     * Tell everyone the current users.
-     */
-    io.to(roomId).emit(
-      "users-in-room",
-      getUsers(roomId)
-    );
+      // Check whether the user is invited
+      const isInvited = room.invitedUsers.some(
+        (userId) =>
+          userId.toString() ===
+          socket.user.userId.toString()
+      );
 
-    /*
-     * Tell existing users that somebody joined.
-     */
-    socket.to(roomId).emit("user-joined", {
-      socketId: socket.id,
-    });
+      if (!isInvited) {
+        socket.emit("join-error", {
+          message: "You are not invited to this room",
+        });
+        return;
+      }
+
+      // User is authorized
+      socket.join(roomId);
+
+      addUser(roomId, socket.id);
+
+      await Room.findOneAndUpdate(
+        { roomId },
+        {
+          roomId,
+          activeUsers: getUsers(roomId).length,
+        },
+        {
+          upsert: true,
+          new: true,
+        }
+      );
+
+      console.log(
+        `${socket.user.username} (${socket.id}) joined room: ${roomId}`
+      );
+
+      io.to(roomId).emit(
+        "users-in-room",
+        getUsers(roomId)
+      );
+
+      socket.to(roomId).emit("user-joined", {
+        socketId: socket.id,
+      });
+    } catch (error) {
+      console.error("Join room error:", error);
+
+      socket.emit("join-error", {
+        message: "Unable to join room",
+      });
+    }
   });
 
-  // ===========================
-  // Leave Room
-  // ===========================
+  /* =======================================================
+     LEAVE ROOM
+     ======================================================= */
+
   socket.on("leave-room", async (roomId) => {
-    socket.leave(roomId);
+    try {
+      socket.leave(roomId);
 
-    removeUser(roomId, socket.id);
-    await Room.findOneAndUpdate(
-  { roomId },
-  {
-    activeUsers: getUsers(roomId).length,
-  }
-);
+      removeUser(roomId, socket.id);
 
-    /*
-     * Allow this socket to receive initial state again
-     * if it rejoins later.
-     */
-    initialCodeSynced.delete(
-      `${socket.id}:${roomId}`
-    );
+      initialCodeSynced.delete(
+        `${socket.id}:${roomId}`
+      );
 
-    console.log(`${socket.id} left room: ${roomId}`);
+      await Room.findOneAndUpdate(
+        { roomId },
+        {
+          activeUsers: getUsers(roomId).length,
+        }
+      );
 
-    io.to(roomId).emit(
-      "users-in-room",
-      getUsers(roomId)
-    );
+      console.log(
+        `${socket.id} left room: ${roomId}`
+      );
 
-    socket.to(roomId).emit("user-left", {
-      socketId: socket.id,
-    });
+      io.to(roomId).emit(
+        "users-in-room",
+        getUsers(roomId)
+      );
 
-    socket.to(roomId).emit(
-      "awareness-remove",
-      {
+      socket.to(roomId).emit("user-left", {
         socketId: socket.id,
-      }
-    );
+      });
+
+      socket.to(roomId).emit(
+        "awareness-remove",
+        {
+          socketId: socket.id,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "Leave room error:",
+        error
+      );
+    }
   });
 
   /* =======================================================
@@ -180,21 +254,34 @@ io.on("connection", (socket) => {
 
   socket.on(
     "yjs-sync-request",
-    (roomId) => {
+    async (roomId) => {
       if (!roomId) {
         return;
       }
 
-      const state = getDocumentState(roomId);
+      try {
+        // Load saved Yjs state from MongoDB
+        await loadDocument(roomId);
 
-      socket.emit("yjs-sync", {
-        roomId,
-        update: state,
-      });
+        // Get current Yjs state
+        const state =
+          getDocumentState(roomId);
 
-      console.log(
-        `Yjs state sent to ${socket.id} for room: ${roomId}`
-      );
+        // Send state to requesting client
+        socket.emit("yjs-sync", {
+          roomId,
+          update: state,
+        });
+
+        console.log(
+          `Yjs state loaded and sent to ${socket.id} for room: ${roomId}`
+        );
+      } catch (error) {
+        console.error(
+          "Yjs sync error:",
+          error
+        );
+      }
     }
   );
 
@@ -212,6 +299,10 @@ io.on("connection", (socket) => {
             update
           );
 
+        // Mark room for persistence
+        dirtyYjsRooms.add(roomId);
+
+        // Send update to other users
         socket.to(roomId).emit(
           "yjs-update",
           {
@@ -251,6 +342,10 @@ io.on("connection", (socket) => {
           awareness,
         }
       );
+
+      console.log(
+        `Awareness update from ${socket.id} in room: ${roomId}`
+      );
     }
   );
 
@@ -267,6 +362,10 @@ io.on("connection", (socket) => {
           socketId: socket.id,
         }
       );
+
+      console.log(
+        `Awareness removed for ${socket.id} from room: ${roomId}`
+      );
     }
   );
 
@@ -282,13 +381,8 @@ io.on("connection", (socket) => {
       }
 
       /*
-       * IMPORTANT:
-       *
-       * Only send the initial code state once to this
-       * socket for this room.
-       *
-       * This prevents a frontend effect from repeatedly
-       * requesting the same code and overwriting local typing.
+       * Only send initial code once to each
+       * socket for each room.
        */
 
       const syncKey =
@@ -349,10 +443,6 @@ io.on("connection", (socket) => {
       files,
       activeFileId,
     } = {}) => {
-      /*
-       * Validate incoming data.
-       */
-
       if (
         !roomId ||
         !Array.isArray(files)
@@ -360,35 +450,19 @@ io.on("connection", (socket) => {
         return;
       }
 
-      /*
-       * Get previous revision.
-       */
-
       const previousState =
         roomCodeState.get(roomId);
 
       const previousRevision =
         previousState?.revision || 0;
 
-      /*
-       * Increase revision number.
-       */
-
       const revision =
         previousRevision + 1;
-
-      /*
-       * Determine active file.
-       */
 
       const nextActiveFileId =
         activeFileId ||
         files[0]?.id ||
         null;
-
-      /*
-       * Store latest state on server.
-       */
 
       roomCodeState.set(
         roomId,
@@ -403,15 +477,6 @@ io.on("connection", (socket) => {
       console.log(
         `Code update from ${socket.id} in room ${roomId} - revision ${revision}`
       );
-
-      /*
-       * Send the update ONLY to the other users.
-       *
-       * socket.to() does NOT send it back to the sender.
-       *
-       * This is important because the person typing should
-       * never receive their own update as a remote update.
-       */
 
       socket.to(roomId).emit(
         "code-update",
@@ -444,10 +509,6 @@ io.on("connection", (socket) => {
         return;
       }
 
-      /*
-       * Update server-side active file state.
-       */
-
       const currentState =
         roomCodeState.get(roomId);
 
@@ -460,10 +521,6 @@ io.on("connection", (socket) => {
           }
         );
       }
-
-      /*
-       * Broadcast only to other users.
-       */
 
       socket.to(roomId).emit(
         "active-file-change",
@@ -487,19 +544,13 @@ io.on("connection", (socket) => {
   socket.on(
     "disconnect",
     () => {
-      /*
-       * Find all rooms this socket belongs to.
-       */
-
       const joinedRooms =
         [...socket.rooms].filter(
-          (room) => room !== socket.id
+          (room) =>
+            room !== socket.id
         );
 
-      /*
-       * Remove sync markers belonging to this socket.
-       */
-
+      // Remove sync markers belonging to this socket
       for (const key of initialCodeSynced) {
         if (
           key.startsWith(
@@ -510,10 +561,7 @@ io.on("connection", (socket) => {
         }
       }
 
-      /*
-       * Remove user from every room.
-       */
-
+      // Remove user from all rooms
       joinedRooms.forEach(
         (roomId) => {
           removeUser(
@@ -551,14 +599,71 @@ io.on("connection", (socket) => {
 });
 
 /* =========================================================
+   YJS PERSISTENCE
+   ========================================================= */
+
+// Save changed Yjs documents to MongoDB every 5 seconds.
+
+const persistenceTimer =
+  setInterval(
+    async () => {
+      if (
+        dirtyYjsRooms.size === 0
+      ) {
+        return;
+      }
+
+      const roomsToSave =
+        [...dirtyYjsRooms];
+
+      for (
+        const roomId of roomsToSave
+      ) {
+        try {
+          await saveDocument(
+            roomId
+          );
+
+          // Mark clean only after successful save
+          dirtyYjsRooms.delete(
+            roomId
+          );
+
+          console.log(
+            `Yjs state persisted for room: ${roomId}`
+          );
+        } catch (error) {
+          console.error(
+            `Failed to persist Yjs state for room ${roomId}:`,
+            error
+          );
+        }
+      }
+    },
+    YJS_PERSISTENCE_INTERVAL
+  );
+
+/* =========================================================
    SERVER START
    ========================================================= */
 
 const PORT =
   process.env.PORT || 3001;
 
-connectDB().then(() => {
-    server.listen(PORT, () => {
-        console.log(`SyncSpace server running on port ${PORT}`);
-    });
-});
+connectDB()
+  .then(() => {
+    server.listen(
+      PORT,
+      () => {
+        console.log(
+          `SyncSpace server running on port ${PORT}`
+        );
+      }
+    );
+  })
+  .catch((error) => {
+    console.error(
+      "Database connection failed:",
+      error
+    );
+  });

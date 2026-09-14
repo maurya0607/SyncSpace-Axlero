@@ -11,10 +11,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mongoose": "^9.9.3",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.5",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
     "yjs": "^13.6.32"
