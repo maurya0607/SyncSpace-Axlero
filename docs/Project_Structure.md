@@ -22,15 +22,11 @@ SyncSpace-Axlero/
 
 ## Current Status
 
-✔ Frontend initial layout completed.
-
-✔ Documentation created.
-
-✔ Backend development in progress.
-
-✔ Database implementation pending.
-
-✔ API integration pending.
+- [Completed] Frontend initial layout completed.
+- [Completed] Documentation created.
+- [In Progress] Backend development in progress.
+- [Pending] Database implementation pending.
+- [Pending] API integration pending.
 
 
 # Project Structure
@@ -151,22 +147,30 @@ SyncSpace-Axlero/
 - Deployment pending.
 
 
-## *******************************************************************
-# Project Structure
-
 ## Current Project Structure
 
 ```text
 SyncSpace-Axlero/
 │
 ├── backend/
+│   ├── config/
+│   │   └── db.js
+│   ├── middleware/
+│   │   └── authMiddleware.js
+│   ├── models/
+│   │   ├── CodeDocument.js
+│   │   ├── Room.js
+│   │   ├── User.js
+│   │   └── Whiteboard.js
+│   ├── routes/
+│   │   ├── auth.js
+│   │   └── room.js
 │   ├── services/
 │   │   └── presence.js
-│   │
 │   ├── yjs/
 │   │   └── yjsManager.js
-│   │
 │   ├── .env
+│   ├── .env.example
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── server.js
@@ -174,32 +178,32 @@ SyncSpace-Axlero/
 │
 ├── frontend/
 │   ├── public/
-│   │
 │   ├── src/
 │   │   ├── assets/
-│   │   │
 │   │   ├── components/
 │   │   │   ├── Navbar/
 │   │   │   ├── Sidebar/
 │   │   │   └── Workspace/
-│   │   │
 │   │   ├── lib/
-│   │   │   └── useCollaborativeRoom...
-│   │   │
+│   │   │   └── useCollaborativeRoom.js
 │   │   ├── pages/
-│   │   │   ├── LandingPage.jsx
+│   │   │   ├── AuthPage.css
+│   │   │   ├── AuthPage.jsx
 │   │   │   ├── LandingPage.css
-│   │   │   ├── RoomPage.jsx
-│   │   │   └── RoomPage.css
-│   │   │
-│   │   ├── App.jsx
+│   │   │   ├── LandingPage.jsx
+│   │   │   ├── RoomPage.css
+│   │   │   └── RoomPage.jsx
 │   │   ├── App.css
+│   │   ├── App.jsx
 │   │   ├── index.css
 │   │   └── main.jsx
-│   │
+│   ├── .env.example
 │   ├── .gitignore
 │   ├── eslint.config.js
-│   └── index.html
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   └── vite.config.js
 │
 ├── docs/
 │   ├── API_Testing.md
@@ -214,47 +218,38 @@ SyncSpace-Axlero/
 ## Description
 
 ### Frontend
-
 * Built using React and Vite.
-* Landing Page and Room Page have been implemented.
-* Navbar, Sidebar, and Workspace components are available.
-* Collaborative room functionality is being integrated.
-* Frontend is structured into reusable components and pages.
+* **Pages**:
+  - `LandingPage.jsx`: Hero section, features overview, room creation, and direct join input.
+  - `AuthPage.jsx`: Tabbed Sign In and Sign Up interface with state preservation and error handling.
+  - `RoomPage.jsx`: Collaborative workspace wrapping Whiteboard, Code Editor, and Chat.
+* **Components**: Modular `Navbar`, `Sidebar`, and `Workspace` elements.
+* **Custom Hooks**: `useCollaborativeRoom.js` managing Socket.io and Yjs state.
+* **Authentication State**: Reactive user session with login/logout management and token storage.
 
 ### Backend
-
-* Express.js server setup is completed.
-* Socket.io is integrated for real-time communication.
-* Room creation and room joining functionality is implemented.
-* Room-based communication is supported.
-* Presence system is implemented for tracking connected users.
-* Yjs integration has been added for real-time collaborative data synchronization.
-* Yjs document state can be created and sent to connected clients.
-* Awareness updates are being handled for collaborative presence.
-* Code state synchronization is being tested.
+* **Server**: Express.js server on port 3001 with CORS and JSON body parser.
+* **Database**: MongoDB connected via Mongoose (`backend/config/db.js`).
+* **Authentication**: JWT token verification (`backend/middleware/authMiddleware.js`) and bcrypt password hashing.
+* **Models**: `User`, `Room`, `CodeDocument`, and `Whiteboard`.
+* **Routes**:
+  - `/api/auth`: Registration and Login handlers.
+  - `/api/rooms`: Protected room creation and user invitation handlers.
+* **Real-time Engine**: Socket.io server with room rooms, user presence (`presence.js`), and collaborative Yjs syncing (`yjsManager.js`).
 
 ### Documentation
-
-* Database planning and documentation are maintained in `Database.md`.
-* API and backend testing details are maintained in `API_Testing.md`.
-* Deployment information is maintained in `Deployment.md`.
-* Project structure is documented in this file.
+* `Database.md`: MongoDB schema definitions, collections, and indexes.
+* `API_Testing.md`: REST API endpoints, Socket.io event specs, and auth flow tests.
+* `Deployment.md`: Deployment guide and environment configuration.
+* `Project_Structure.md`: Architectural map and file structure tracking.
 
 ## Current Status
 
-* Frontend basic layout completed.
-* Landing Page, Room Page, and Auth Page implemented.
-* Complete user authentication and navigation flow integrated:
-  `Sign Up → Login → Login successful → Username + Create Room + Logout → Logout → Sign In + Sign Up`
-* Backend server setup completed on port 3001.
-* Socket.io real-time communication integrated.
-* Room join and communication functionality implemented.
-* Presence system implemented.
-* Yjs integration added.
-* Yjs document creation and state synchronization tested successfully.
-* Awareness update handling tested successfully.
-* Code state synchronization tested successfully.
-* Database persistence with MongoDB in progress.
-* Multi-client real-time synchronization requires final verification.
-* Deployment is pending.
+- [Completed] Full User Authentication & Session Management integrated.
+- [Completed] Protected Room Creation & Navigation flow completed.
+- [Completed] Backend MongoDB database models and connection operational.
+- [Completed] Socket.io real-time communication and presence tracking implemented.
+- [Completed] Yjs collaborative engine & awareness integration active.
+- [In Progress] Whiteboard canvas persistence in progress.
+- [Pending] Production deployment configuration pending.
 
