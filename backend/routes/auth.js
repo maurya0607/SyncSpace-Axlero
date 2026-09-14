@@ -11,7 +11,9 @@ const router = express.Router();
 // ===========================
 router.post("/register", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const usernameValue = String(req.body?.username || "").trim();
+    const { password } = req.body;
+    const username = usernameValue;
 
     if (!username || !password) {
       return res.status(400).json({
@@ -52,7 +54,9 @@ router.post("/register", async (req, res) => {
 // ===========================
 router.post("/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const usernameValue = String(req.body?.username || "").trim();
+    const { password } = req.body;
+    const username = usernameValue;
 
     const user = await User.findOne({ username });
 
@@ -71,6 +75,11 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({
         message: "Invalid username or password",
       });
+    }
+
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is missing from environment variables.");
+      return res.status(500).json({ message: "Authentication is not configured on the server." });
     }
 
     const token = jwt.sign(

@@ -4,7 +4,7 @@ import "./AuthPage.css";
 const SESSION_KEY = "syncspace_username";
 const TOKEN_KEY = "syncspace_token";
 
-const API_BASE_URL = "http://localhost:3001/api/auth";
+const API_BASE_URL = `${import.meta.env.VITE_API_URL || "http://localhost:3001"}/api/auth`;
 
 function Logo() {
   return (
@@ -22,7 +22,7 @@ function EyeIcon({ visible }) {
   return visible ? "◉" : "◌";
 }
 
-function AuthPage({ mode = "signin", onModeChange, onHome }) {
+function AuthPage({ mode = "signin", notice = "", onAuthenticated, onModeChange, onHome }) {
   const isSignUp = mode === "signup";
 
   const [showPassword, setShowPassword] = useState(false);
@@ -31,7 +31,7 @@ function AuthPage({ mode = "signin", onModeChange, onHome }) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [remember, setRemember] = useState(true);
-  const [status, setStatus] = useState({ type: "", message: "" });
+  const [status, setStatus] = useState({ type: notice ? "info" : "", message: notice });
   const [loading, setLoading] = useState(false);
 
   const completeSignIn = (cleanUsername, token) => {
@@ -145,6 +145,7 @@ function AuthPage({ mode = "signin", onModeChange, onHome }) {
       }
 
       completeSignIn(cleanUsername, data.token);
+      onAuthenticated?.({ username: cleanUsername, token: data.token, remember });
       setLoading(false);
     } catch (error) {
       console.error("Authentication error:", error);
