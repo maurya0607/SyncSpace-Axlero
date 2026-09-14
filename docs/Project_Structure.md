@@ -26,11 +26,11 @@ SyncSpace-Axlero/
 
 ✔ Documentation created.
 
-⏳ Backend development in progress.
+✔ Backend development in progress.
 
-⏳ Database implementation pending.
+✔ Database implementation pending.
 
-⏳ API integration pending.
+✔ API integration pending.
 
 
 # Project Structure
@@ -243,8 +243,10 @@ SyncSpace-Axlero/
 ## Current Status
 
 * Frontend basic layout completed.
-* Landing Page and Room Page implemented.
-* Backend server setup completed.
+* Landing Page, Room Page, and Auth Page implemented.
+* Complete user authentication and navigation flow integrated:
+  `Sign Up → Login → Login successful → Username + Create Room + Logout → Logout → Sign In + Sign Up`
+* Backend server setup completed on port 3001.
 * Socket.io real-time communication integrated.
 * Room join and communication functionality implemented.
 * Presence system implemented.
@@ -252,7 +254,7 @@ SyncSpace-Axlero/
 * Yjs document creation and state synchronization tested successfully.
 * Awareness update handling tested successfully.
 * Code state synchronization tested successfully.
-* Database persistence is pending.
-* Authentication and room access control are pending.
+* Database persistence with MongoDB in progress.
 * Multi-client real-time synchronization requires final verification.
 * Deployment is pending.
+

@@ -11,7 +11,7 @@ function Logo() {
   );
 }
 
-function RoomPage({ roomId, workspaceMode, onModeChange, onHome }) {
+function RoomPage({ roomId, workspaceMode, onModeChange, onHome, username, onLogout }) {
   const [copied, setCopied] = useState(false);
 
   const copyInvite = async () => {
@@ -51,6 +51,8 @@ function RoomPage({ roomId, workspaceMode, onModeChange, onHome }) {
         </div>
 
         <div className="room-header-right">
+          <div className="room-user">{username}</div>
+          <button className="room-logout" type="button" onClick={onLogout}>Logout</button>
           <div className="live-status"><span></span> Live</div>
           <div className="room-avatars"><i>C</i><i>R</i><i>A</i></div>
           <button className="invite-button" onClick={copyInvite}>{copied ? "Copied!" : "Invite"} <span>↗</span></button>
