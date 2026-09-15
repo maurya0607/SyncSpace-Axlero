@@ -68,6 +68,17 @@ function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  // Keep page scrolling behavior isolated by route.
+  useEffect(() => {
+    document.body.classList.toggle("landing-route", route.page === "home");
+    document.body.classList.toggle("room-route", route.page === "room");
+    document.body.classList.toggle("auth-route", route.page === "auth");
+
+    return () => {
+      document.body.classList.remove("landing-route", "room-route", "auth-route");
+    };
+  }, [route.page]);
+
   const navigate = (path, notice = "") => {
     window.history.pushState({}, "", path);
     setRoute({ ...getRouteState(), notice });
