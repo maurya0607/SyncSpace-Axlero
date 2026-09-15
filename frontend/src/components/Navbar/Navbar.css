@@ -1,7 +1,9 @@
 .navbar {
-  position: sticky;
+  position: fixed;
   top: 0;
-  z-index: 100;
+  left: 0;
+  right: 0;
+  z-index: 1000;
 
   height: 64px;
   width: 100%;
@@ -12,14 +14,33 @@
 
   padding: 0 24px;
 
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 
-  border-bottom: 1px solid #eaeaea;
+  border-bottom: 1px solid rgba(234, 234, 234, 0.7);
 
   color: #171717;
+
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              -webkit-backdrop-filter 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Glassmorphism effect when scrolled */
+.navbar.scrolled {
+  height: 58px;
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(220, 220, 220, 0.5);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08),
+              0 1px 3px 0 rgba(0, 0, 0, 0.03);
+}
+
 
 
 /* LEFT - BRAND */

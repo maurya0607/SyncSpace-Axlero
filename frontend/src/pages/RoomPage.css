@@ -162,3 +162,22 @@
 .room-logout{border:1px solid #30343c;border-radius:7px;background:#15181d;color:#aeb2bc;padding:7px 9px;font-size:10px}
 .room-logout:hover{border-color:rgba(255,159,67,.4);color:#ffb866;background:rgba(255,159,67,.08)}
 @media(max-width:760px){.room-user{display:none}}
+
+
+/* =========================================================
+   HIDDEN ROOM SCROLLBARS
+   ========================================================= */
+.room-page,
+.room-main,
+.room-main .workspace-content {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.room-page::-webkit-scrollbar,
+.room-main::-webkit-scrollbar,
+.room-main .workspace-content::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

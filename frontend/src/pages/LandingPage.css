@@ -4,8 +4,9 @@
   min-height: 100vh;
   background: #08090b;
   color: #f5f5f7;
-  overflow: hidden;
-  font-family: Inter, system-ui, sans-serif
+  overflow-x: hidden;
+  font-family: Inter, system-ui, sans-serif;
+  padding-top: 76px;
 }
 
 .landing-page * {
@@ -13,14 +14,22 @@
 }
 
 .landing-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
   height: 76px;
-  max-width: 1240px;
-  margin: auto;
-  padding: 0 28px;
+  z-index: 1000;
+  padding: 0 max(28px, calc((100% - 1240px) / 2 + 28px));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, .07)
+  background: rgba(8, 9, 11, 0.82);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ss-logo {
@@ -159,7 +168,8 @@
   padding: 14px 18px;
   font-weight: 700;
   font-size: 13px;
-  box-shadow: 0 10px 35px rgba(255, 159, 67, .18)
+  box-shadow: 0 10px 35px rgba(255, 159, 67, .18);
+  cursor: pointer;
 }
 
 .primary-cta span {
@@ -191,7 +201,8 @@
   color: #ddd;
   padding: 0 13px;
   font-size: 12px;
-  font-weight: 600
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .hero-note {
@@ -425,11 +436,12 @@
 }
 
 .feature-section,
-.workflow-section {
+.workflow-section,
+.about-section {
   max-width: 1240px;
   margin: auto;
   padding: 100px 28px;
-  border-top: 1px solid #1b1d22
+  border-top: 1px solid #1b1d22;
 }
 
 .section-heading h2 {
@@ -522,6 +534,67 @@
   margin: 35px 0 8px
 }
 
+.about-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 60px;
+  margin-top: 24px;
+  align-items: start;
+}
+
+.about-content h2 {
+  font: 600 clamp(32px, 3.8vw, 48px)/1.15 "Space Grotesk", sans-serif;
+  letter-spacing: -.05em;
+  margin: 18px 0 16px;
+  color: #f7f7f8;
+}
+
+.about-content h2 em {
+  font-style: normal;
+  color: #ffb866;
+}
+
+.about-content p {
+  color: #9b9da7;
+  font-size: 15px;
+  line-height: 1.75;
+  margin: 0;
+  max-width: 500px;
+}
+
+.about-points {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-points > div {
+  background: #111217;
+  border: 1px solid #24262d;
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color .18s ease, transform .18s ease;
+}
+
+.about-points > div:hover {
+  border-color: rgba(255, 159, 67, .3);
+  transform: translateX(4px);
+}
+
+.about-points strong {
+  font: 600 14px "Space Grotesk", sans-serif;
+  color: #ffb866;
+}
+
+.about-points span {
+  font-size: 12px;
+  color: #888b96;
+  line-height: 1.5;
+}
+
 .landing-footer {
   max-width: 1240px;
   margin: auto;
@@ -549,8 +622,13 @@
   }
 
   .feature-grid,
-  .workflow-section {
+  .workflow-section,
+  .about-content {
     grid-template-columns: 1fr
+  }
+
+  .about-content {
+    gap: 36px;
   }
 
   .feature-grid article {
@@ -584,13 +662,10 @@
     padding: 0 18px
   }
 
-  .landing-auth-actions {
-    display: none
-  }
-
   .hero,
   .feature-section,
-  .workflow-section {
+  .workflow-section,
+  .about-section {
     padding-left: 18px;
     padding-right: 18px
   }
@@ -901,33 +976,6 @@
   }
 }
 
-.logged-user {
-  color: #c9cbd2;
-  font-size: 12px;
-  font-weight: 600;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap
-}
-
-.landing-notice {
-  max-width: 900px;
-  margin: 18px auto 0;
-  padding: 12px 16px;
-  border: 1px solid rgba(255, 159, 67, .35);
-  border-radius: 9px;
-  background: rgba(255, 159, 67, .08);
-  color: #ffcf9a;
-  font-size: 13px
-}
-
-@media(max-width:900px) {
-  .logged-user {
-    max-width: 110px
-  }
-
-  .landing-notice {
-    margin: 14px 18px 0
-  }
-}
+.logged-user{color:#c9cbd2;font-size:12px;font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.landing-notice{max-width:900px;margin:18px auto 0;padding:12px 16px;border:1px solid rgba(255,159,67,.35);border-radius:9px;background:rgba(255,159,67,.08);color:#ffcf9a;font-size:13px}
+@media(max-width:900px){.logged-user{max-width:110px}.landing-notice{margin:14px 18px 0}}

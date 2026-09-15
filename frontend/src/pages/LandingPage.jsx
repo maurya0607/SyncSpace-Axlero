@@ -55,7 +55,7 @@ function LandingPage({
       {notice && <div className="landing-notice" role="status">{notice}</div>}
 
       <main>
-        <section className="hero" id="about">
+        <section className="hero" id="home">
           <div className="hero-glow hero-glow-one" />
           <div className="hero-glow hero-glow-two" />
           <div className="hero-copy">
@@ -93,6 +93,20 @@ function LandingPage({
         </section>
         <section className="feature-section" id="features"><div className="section-heading"><span>01 / BUILT FOR COLLABORATION</span><h2>Everything your team needs<br />to move from idea to <em>execution.</em></h2></div><div className="feature-grid"><article><div className="feature-icon">✦</div><span className="feature-no">01</span><h3>Shared whiteboard</h3><p>Sketch flows, diagrams, architecture and ideas on a canvas designed for fast thinking.</p></article><article><div className="feature-icon">{`</>`}</div><span className="feature-no">02</span><h3>Collaborative code</h3><p>Write and review code together with tabs, syntax highlighting and an integrated output panel.</p></article><article><div className="feature-icon">◉</div><span className="feature-no">03</span><h3>One shared room</h3><p>Keep your team's visual thinking and implementation side by side instead of switching tools.</p></article></div></section>
         <section className="workflow-section" id="workflow"><div><span className="section-kicker">02 / SIMPLE WORKFLOW</span><h2>Open. Share. <em>Build.</em></h2></div><div className="steps"><div><span>01</span><h3>Create a room</h3><p>Sign in and start a protected workspace with a generated room code.</p></div><div><span>02</span><h3>Invite your team</h3><p>Share the room code with teammates and work side by side.</p></div><div><span>03</span><h3>Build together</h3><p>Sketch on the board and turn the idea into working code.</p></div></div></section>
+        <section className="about-section" id="about">
+          <span className="section-kicker">03 / ABOUT SYNCSPACE</span>
+          <div className="about-content">
+            <div>
+              <h2>One room for every <em>great idea.</em></h2>
+              <p>SyncSpace is a collaborative workspace built for teams that want to move from sketches to working code without switching between tools.</p>
+            </div>
+            <div className="about-points">
+              <div><strong>Shared context</strong><span>Keep discussions, diagrams, and implementation together.</span></div>
+              <div><strong>Real-time teamwork</strong><span>Work side by side and see changes as they happen.</span></div>
+              <div><strong>Built for focus</strong><span>A clean workspace designed around your team's workflow.</span></div>
+            </div>
+          </div>
+        </section>
       </main>
       <footer className="landing-footer"><Logo /><span>SyncSpace · Collaborative workspace</span><span>Built for Axlero</span></footer>
     </div>

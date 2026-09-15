@@ -1,8 +1,28 @@
-import './Navbar.css'
+import { useState, useEffect } from 'react';
+import './Navbar.css';
 
 function Navbar() {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 15) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial check
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   return (
-    <header className="navbar">
+    <header className={`navbar ${isScrolled ? 'scrolled' : ''}`}>
       {/* Left - Brand */}
       <div className="navbar-left">
         <div className="brand">
