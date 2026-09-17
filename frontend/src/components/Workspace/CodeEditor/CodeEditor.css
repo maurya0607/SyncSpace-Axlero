@@ -1,0 +1,2699 @@
+/* =========================================================
+   CODE EDITOR
+   ========================================================= */
+
+.code-editor {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  height: 100%;
+
+  min-width: 0;
+  min-height: 0;
+
+  overflow: hidden;
+
+  background: #171717;
+  color: #ffffff;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.code-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  flex: 0 0 78px;
+
+  min-height: 78px;
+  height: 78px;
+
+  padding: 14px 18px;
+
+  background: #ffffff;
+  color: #111111;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  box-sizing: border-box;
+
+  position: relative;
+  z-index: 5;
+}
+
+
+/* =========================================================
+   HEADER LEFT
+   ========================================================= */
+
+.code-editor-heading {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  min-width: 0;
+}
+
+
+.code-editor-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 38px;
+  height: 38px;
+
+  flex: 0 0 38px;
+
+  border-radius: 10px;
+
+  background: #f5f5f5;
+
+  color: #111111;
+
+  font-size: 15px;
+  font-weight: 700;
+}
+
+
+.code-editor-heading h2 {
+  margin: 0;
+
+  font-size: 18px;
+  line-height: 1.2;
+
+  font-weight: 700;
+
+  color: #111111;
+}
+
+
+.code-editor-heading p {
+  margin: 4px 0 0;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+
+  font-size: 13px;
+
+  color: #888888;
+}
+
+
+/* =========================================================
+   HEADER ACTIONS
+   ========================================================= */
+
+.code-editor-actions {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+}
+
+
+/* =========================================================
+   OUTPUT BUTTON
+   ========================================================= */
+
+.output-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 13px;
+  border: 1px solid #2f3136;
+  border-radius: 9px;
+  background: #15171a;
+  color: #9b9da5;
+  font: 600 12px Inter, Arial, sans-serif;
+  cursor: pointer;
+  transition: .18s ease;
+}
+
+.output-button:hover {
+  background: #1d1f23;
+  border-color: #6b4a24;
+  color: #f2f2f2;
+}
+
+.output-button.active {
+  background: rgba(255,159,67,.12);
+  border-color: #FF9F43;
+  color: #FFB866;
+  box-shadow: 0 0 0 1px rgba(255,159,67,.08);
+}
+
+.run-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  height: 38px;
+
+  padding: 0 16px;
+
+  border: 1px solid #dddddd;
+
+  border-radius: 9px;
+
+  background: #ffffff;
+  color: #111111;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+
+.run-button:hover {
+  background: #f5f5f5;
+
+  border-color: #cfcfcf;
+}
+
+
+.run-button:active {
+  transform: translateY(1px);
+}
+
+
+.more-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 34px;
+  height: 34px;
+
+  border: 0;
+
+  background: transparent;
+
+  color: #777777;
+
+  font-size: 22px;
+
+  cursor: pointer;
+
+  border-radius: 7px;
+}
+
+
+.more-button:hover {
+  background: #f3f4f6;
+
+  color: #111111;
+}
+
+
+/* =========================================================
+   TABS
+   ========================================================= */
+
+.editor-tabs {
+  display: flex;
+  align-items: stretch;
+
+  flex: 0 0 48px;
+
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+  min-width: 0;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  background: #111111;
+
+  border-bottom: 1px solid #272727;
+
+  scrollbar-width: thin;
+
+  box-sizing: border-box;
+
+  position: relative;
+  z-index: 4;
+}
+
+
+.editor-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+
+.editor-tabs::-webkit-scrollbar-track {
+  background: #111111;
+}
+
+
+.editor-tabs::-webkit-scrollbar-thumb {
+  background: #444444;
+
+  border-radius: 10px;
+}
+
+
+/* =========================================================
+   TAB
+   ========================================================= */
+
+.editor-tab {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  flex: 0 0 auto;
+
+  height: 48px;
+
+  min-width: 130px;
+  max-width: 210px;
+
+  padding: 0 12px;
+
+  border: 0;
+  border-right: 1px solid #292929;
+
+  background: #171717;
+  color: #858585;
+
+  font-family:
+    "JetBrains Mono",
+    "Fira Code",
+    "Consolas",
+    monospace;
+
+  font-size: 12px;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+
+  box-sizing: border-box;
+}
+
+
+.editor-tab:hover {
+  background: #1d1d1d;
+
+  color: #bbbbbb;
+}
+
+
+.editor-tab.active {
+  background: #1f1f1f;
+
+  color: #f5f5f5;
+}
+
+
+.editor-tab.active::after {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  height: 2px;
+
+  background: #ffffff;
+}
+
+
+/* =========================================================
+   TAB LANGUAGE
+   ========================================================= */
+
+.tab-language {
+  flex: 0 0 auto;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  color: #777777;
+}
+
+
+.editor-tab.active .tab-language {
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   TAB NAME
+   ========================================================= */
+
+.tab-name {
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+
+  flex: 1;
+
+  text-align: left;
+}
+
+
+/* =========================================================
+   TAB UNSAVED
+   ========================================================= */
+
+.tab-unsaved {
+  flex: 0 0 auto;
+
+  color: #f59e0b;
+
+  font-size: 9px;
+}
+
+
+/* =========================================================
+   TAB CLOSE
+   ========================================================= */
+
+.tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 20px;
+  height: 20px;
+
+  flex: 0 0 20px;
+
+  border-radius: 4px;
+
+  color: #666666;
+
+  font-size: 15px;
+
+  cursor: pointer;
+}
+
+
+.tab-close:hover {
+  background: #333333;
+
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   NEW TAB
+   ========================================================= */
+
+.new-tab-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 48px;
+  height: 48px;
+
+  flex: 0 0 48px;
+
+  border: 0;
+
+  background: #111111;
+
+  color: #999999;
+
+  font-size: 21px;
+
+  cursor: pointer;
+}
+
+
+.new-tab-button:hover {
+  background: #1d1d1d;
+
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   EDITOR INFO BAR
+   ========================================================= */
+
+.editor-info-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  flex: 0 0 42px;
+
+  width: 100%;
+  height: 42px;
+  min-height: 42px;
+  min-width: 0;
+
+  padding: 0 14px;
+
+  background: #151515;
+
+  border-bottom: 1px solid #242424;
+
+  font-size: 12px;
+
+  box-sizing: border-box;
+
+  position: relative;
+  z-index: 3;
+}
+
+
+.language-label {
+  color: #999999;
+}
+
+
+.save-status {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 6px;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+
+  font-size: 12px;
+}
+
+
+.save-status.saved {
+  color: #aaaaaa;
+}
+
+
+.save-status.unsaved {
+  color: #f59e0b;
+}
+
+
+.status-dot {
+  font-size: 9px;
+}
+
+
+/* =========================================================
+   CODE AREA
+   ========================================================= */
+
+.code-area {
+  display: flex;
+
+  flex: 1 1 auto;
+
+  width: 100%;
+  height: auto;
+
+  min-width: 0;
+  min-height: 0;
+
+  overflow: hidden;
+
+  background: #171717;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   LINE NUMBER GUTTER
+   ========================================================= */
+
+.line-numbers {
+  flex: 0 0 56px;
+
+  width: 56px;
+  height: 100%;
+  min-height: 0;
+
+  overflow: hidden;
+
+  box-sizing: border-box;
+
+  padding-top: 16px;
+
+  text-align: right;
+
+  user-select: none;
+  pointer-events: none;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+
+  font-size: 13px;
+  line-height: 24px;
+
+  color: #6b7280;
+
+  background: #171717;
+
+  border-right: 1px solid #252525;
+}
+
+
+/* =========================================================
+   INDIVIDUAL LINE NUMBER
+   ========================================================= */
+
+.line-number {
+  width: 100%;
+  height: 24px;
+
+  box-sizing: border-box;
+
+  padding-right: 14px;
+
+  line-height: 24px;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   CODE INPUT
+   ========================================================= */
+
+.code-input {
+  flex: 1 1 auto;
+
+  width: 0;
+  height: 100%;
+
+  min-width: 0;
+  min-height: 0;
+
+  box-sizing: border-box;
+
+  margin: 0;
+  padding: 16px;
+
+  border: none;
+  outline: none;
+
+  resize: none;
+
+  overflow-x: auto;
+  overflow-y: auto;
+
+  background: #171717;
+  color: #f5f5f5;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    monospace;
+
+  font-size: 13px;
+  line-height: 24px;
+
+  tab-size: 2;
+
+  white-space: pre;
+
+  scrollbar-width: thin;
+}
+
+
+.code-input::selection {
+  background: rgba(100, 140, 255, 0.28);
+}
+
+
+/* =========================================================
+   CODE EDITOR SCROLLBAR
+   ========================================================= */
+
+.code-input::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+
+.code-input::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+
+.code-input::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 4px
+}
+
+
+.code-input::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+
+/* =========================================================
+   OUTPUT
+   ========================================================= */
+
+.editor-output {
+  display: flex;
+  flex-direction: column;
+
+  flex: 0 0 190px;
+
+  width: 100%;
+  height: 190px;
+
+  min-width: 0;
+  min-height: 0;
+
+  background: #111111;
+
+  border-top: 1px solid #292929;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+
+  position: relative;
+  z-index: 2;
+}
+
+
+/* =========================================================
+   OUTPUT HEADER
+   ========================================================= */
+
+.output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  flex: 0 0 48px;
+
+  width: 100%;
+  height: 48px;
+  min-height: 48px;
+
+  padding: 0 14px;
+
+  border-bottom: 1px solid #292929;
+
+  background: #111111;
+
+  color: #dddddd;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+
+  font-size: 12px;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+
+.output-header button {
+  border: 0;
+
+  background: transparent;
+
+  color: #777777;
+
+  font-size: 12px;
+
+  cursor: pointer;
+}
+
+
+.output-header button:hover {
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   OUTPUT CONTENT
+   ========================================================= */
+
+.output-content {
+  flex: 1 1 auto;
+
+  width: 100%;
+  height: auto;
+
+  min-width: 0;
+  min-height: 0;
+
+  padding: 12px 14px;
+
+  overflow-x: auto;
+  overflow-y: auto;
+
+  box-sizing: border-box;
+
+  font-family:
+    "JetBrains Mono",
+    "Fira Code",
+    "Consolas",
+    monospace;
+
+  font-size: 12px;
+
+  line-height: 20px;
+
+  color: #dddddd;
+
+  white-space: pre-wrap;
+
+  overflow-wrap: anywhere;
+
+  scrollbar-width: thin;
+}
+
+
+.output-line {
+  min-height: 20px;
+
+  white-space: pre-wrap;
+
+  word-break: break-word;
+}
+
+
+.output-empty {
+  color: #555555;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.editor-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  flex: 0 0 32px;
+
+  width: 100%;
+  height: 32px;
+  min-height: 32px;
+
+  padding: 0 14px;
+
+  background: #111111;
+
+  border-top: 1px solid #242424;
+
+  color: #777777;
+
+  font-size: 10px;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+}
+
+
+.footer-right {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+   ========================================================= */
+
+.code-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 100%;
+  height: 100%;
+
+  background: #151515;
+
+  color: #777777;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .code-editor {
+    height: 600px;
+  }
+
+  .code-editor-header {
+    padding: 12px;
+  }
+
+  .editor-footer {
+    padding: 0 10px;
+  }
+
+  .footer-right {
+    gap: 8px;
+  }
+
+}
+
+
+@media (max-width: 700px) {
+
+  .code-editor {
+    height: 560px;
+  }
+
+  .code-editor-heading p {
+    display: none;
+  }
+
+  .code-editor-heading h2 {
+    font-size: 16px;
+  }
+
+  .code-editor-icon {
+    width: 34px;
+    height: 34px;
+
+    flex-basis: 34px;
+  }
+
+  .run-button {
+    padding: 0 12px;
+  }
+
+  .line-numbers {
+    width: 48px;
+
+    flex-basis: 48px;
+
+    padding-right: 10px;
+  }
+
+  .code-input {
+    padding-left: 10px;
+  }
+
+  .footer-right span:nth-child(2) {
+    display: none;
+  }
+
+}
+
+
+@media (max-width: 480px) {
+
+  .code-editor-header {
+    min-height: 64px;
+  }
+
+  .code-editor-actions {
+    gap: 4px;
+  }
+
+  .more-button {
+    display: none;
+  }
+
+  .editor-info-bar {
+    padding: 0 10px;
+  }
+
+  .editor-output {
+    flex-basis: 130px;
+
+    min-height: 130px;
+  }
+
+  .footer-right span:nth-child(3) {
+    display: none;
+  }
+
+}
+
+/* =========================================================
+   CREATE NEW FILE MODAL
+   ========================================================= */
+
+.new-file-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.new-file-modal {
+  width: min(420px, calc(100vw - 32px));
+
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.18);
+
+  overflow: hidden;
+}
+
+.new-file-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 18px 20px;
+
+  border-bottom: 1px solid #eeeeee;
+}
+
+.new-file-modal-header h3 {
+  margin: 0;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  color: #111111;
+}
+
+.new-file-modal-close {
+  width: 32px;
+  height: 32px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 7px;
+
+  background: transparent;
+  color: #666666;
+
+  font-size: 22px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.new-file-modal-close:hover {
+  background: #f3f4f6;
+  color: #111111;
+}
+
+.new-file-modal-body {
+  padding: 20px;
+}
+
+.new-file-modal-body label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  color: #374151;
+}
+
+.new-file-modal-body input {
+  width: 100%;
+  height: 42px;
+
+  box-sizing: border-box;
+
+  padding: 0 12px;
+
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+
+  outline: none;
+
+  background: #ffffff;
+  color: #111111;
+
+  font-size: 14px;
+
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.new-file-modal-body input:focus {
+  border-color: #111111;
+
+  box-shadow:
+    0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+
+.new-file-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+
+  padding: 16px 20px;
+
+  border-top: 1px solid #eeeeee;
+
+  background: #fafafa;
+}
+
+.cancel-file-button,
+.create-file-button {
+  height: 38px;
+
+  padding: 0 16px;
+
+  border-radius: 8px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.cancel-file-button {
+  border: 1px solid #d1d5db;
+
+  background: #ffffff;
+  color: #374151;
+}
+
+.cancel-file-button:hover {
+  background: #f3f4f6;
+}
+
+.create-file-button {
+  border: 1px solid #111111;
+
+  background: #111111;
+  color: #ffffff;
+}
+
+.create-file-button:hover:not(:disabled) {
+  background: #222222;
+}
+
+.create-file-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   FILE MENU
+   ========================================================= */
+
+.file-menu-wrapper {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+}
+
+
+.file-context-menu {
+  position: absolute;
+
+  top: calc(100% + 8px);
+  right: 0;
+
+  z-index: 1000;
+
+  width: 170px;
+
+  padding: 6px;
+
+  background: #ffffff;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.12);
+
+  box-sizing: border-box;
+}
+
+
+.file-context-menu button {
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+  height: 36px;
+
+  gap: 10px;
+
+  padding: 0 10px;
+
+  border: 0;
+
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #222222;
+
+  font-family:
+    Inter,
+    Arial,
+    sans-serif;
+
+  font-size: 13px;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+
+.file-context-menu button:hover {
+  background: #f3f4f6;
+}
+
+
+.file-context-menu button.danger {
+  color: #dc2626;
+}
+
+
+.file-context-menu button.danger:hover {
+  background: #fef2f2;
+}
+
+
+.file-context-menu button span:first-child {
+  width: 18px;
+
+  text-align: center;
+
+  font-size: 13px;
+}
+
+
+/* =========================================================
+   DELETE BUTTON
+   ========================================================= */
+
+.delete-file-button {
+  height: 38px;
+
+  padding: 0 16px;
+
+  border: 1px solid #dc2626;
+
+  border-radius: 8px;
+
+  background: #dc2626;
+
+  color: #ffffff;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+.delete-file-button:hover {
+  background: #b91c1c;
+
+  border-color: #b91c1c;
+}
+
+/* =========================================================
+   OUTPUT SCROLLBAR
+   ========================================================= */
+
+.output-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.output-content::-webkit-scrollbar-track {
+  background: #111111;
+}
+
+.output-content::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 4px;
+}
+
+.output-content::-webkit-scrollbar-thumb:hover {
+  background: #505050;
+}
+
+.token.comment {
+  color: #6a9955;
+}
+
+.token.keyword {
+  color: #c586c0;
+}
+
+.token.string {
+  color: #ce9178;
+}
+
+.token.number {
+  color: #b5cea8;
+}
+
+.token.function {
+  color: #dcdcaa;
+}
+
+.token.operator {
+  color: #d4d4d4;
+}
+
+.token.boolean {
+  color: #569cd6;
+}
+/* =========================================================
+   SYNTAX HIGHLIGHTING EDITOR
+   ========================================================= */
+
+.editor-textarea-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #111111;
+}
+
+/* Prism highlighted layer */
+
+.code-highlight {
+  position: absolute;
+  inset: 0;
+
+  margin: 0;
+  padding: 24px 20px;
+
+  width: 100%;
+  height: 100%;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+
+  background: #111111;
+
+  color: #f8f8f2;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 14px;
+  line-height: 1.8;
+
+  white-space: pre;
+  tab-size: 2;
+
+  pointer-events: none;
+}
+
+/* Actual typing textarea */
+
+.code-input {
+  position: absolute;
+  inset: 0;
+
+  width: 100%;
+  height: 100%;
+
+  box-sizing: border-box;
+
+  margin: 0;
+  padding: 24px 20px;
+
+  border: 0;
+  outline: 0;
+
+  resize: none;
+
+  background: transparent;
+
+  color: transparent;
+
+  caret-color: #ffffff;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 14px;
+  line-height: 1.8;
+
+  white-space: pre;
+  tab-size: 2;
+
+  overflow: auto;
+
+  z-index: 2;
+}
+
+/* =========================================================
+   PRISM TOKENS
+   ========================================================= */
+
+.code-highlight .token.comment,
+.code-highlight .token.prolog,
+.code-highlight .token.doctype,
+.code-highlight .token.cdata {
+  color: #6a9955;
+}
+
+.code-highlight .token.punctuation {
+  color: #d4d4d4;
+}
+
+.code-highlight .token.property,
+.code-highlight .token.tag,
+.code-highlight .token.boolean,
+.code-highlight .token.number,
+.code-highlight .token.constant,
+.code-highlight .token.symbol,
+.code-highlight .token.deleted {
+  color: #b5cea8;
+}
+
+.code-highlight .token.selector,
+.code-highlight .token.attr-name,
+.code-highlight .token.string,
+.code-highlight .token.char,
+.code-highlight .token.builtin,
+.code-highlight .token.inserted {
+  color: #ce9178;
+}
+
+.code-highlight .token.operator,
+.code-highlight .token.entity,
+.code-highlight .token.url,
+.code-highlight .language-css .token.string,
+.code-highlight .style .token.string {
+  color: #d4d4d4;
+}
+
+.code-highlight .token.atrule,
+.code-highlight .token.attr-value,
+.code-highlight .token.keyword {
+  color: #569cd6;
+}
+
+.code-highlight .token.function,
+.code-highlight .token.class-name {
+  color: #dcdcaa;
+}
+
+.code-highlight .token.regex,
+.code-highlight .token.important,
+.code-highlight .token.variable {
+  color: #9cdcfe;
+}
+
+/* =======================================================
+   TASK 2: REMOTE CURSOR
+   ======================================================= */
+
+
+
+.remote-cursor-indicator {
+  position: absolute;
+  width: 2px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.remote-cursor-label {
+  position: absolute;
+  top: -20px;
+  left: 0;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: white;
+  font-size: 10px;
+  line-height: 14px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* =========================================================
+   CODE EDITOR - PRECISE ALIGNMENT
+   Keeps line numbers, highlighted code, textarea and
+   collaborator cursors perfectly aligned.
+   ========================================================= */
+
+/* Main code area */
+.code-area {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: #171717;
+}
+
+/* =========================================================
+   LINE NUMBERS
+   ========================================================= */
+
+.line-numbers {
+  flex: 0 0 56px;
+  width: 56px;
+  height: 100%;
+  margin: 0;
+  padding: 16px 0 16px 0;
+
+  box-sizing: border-box;
+  overflow: hidden;
+
+  background: #171717;
+  border-right: 1px solid #252525;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 13px;
+  line-height: 24px;
+
+  text-align: right;
+  color: #6b7280;
+
+  user-select: none;
+}
+
+/* Each individual number */
+.line-number {
+  height: 24px;
+  min-height: 24px;
+
+  margin: 0;
+  padding: 0 16px 0 0;
+
+  box-sizing: border-box;
+
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 24px;
+
+  text-align: right;
+  color: #6b7280;
+}
+
+/* =========================================================
+   EDITOR WRAPPER
+   ========================================================= */
+
+.editor-textarea-wrapper {
+  position: relative;
+
+  flex: 1 1 auto;
+  width: 0;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+
+  overflow: hidden;
+
+  background: #171717;
+}
+
+/* =========================================================
+   PRISM HIGHLIGHT LAYER
+   ========================================================= */
+
+.code-highlight {
+  position: absolute;
+
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  width: 100%;
+  height: 100%;
+
+  margin: 0;
+  padding: 16px;
+
+  box-sizing: border-box;
+
+  overflow: hidden;
+
+  pointer-events: none;
+  user-select: none;
+
+  white-space: pre;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 13px;
+  line-height: 24px;
+
+  tab-size: 2;
+
+  color: #f5f5f5;
+
+  background: transparent;
+}
+
+/* =========================================================
+   ACTUAL TEXTAREA
+   ========================================================= */
+
+.code-input {
+  position: absolute;
+
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  width: 100%;
+  height: 100%;
+
+  margin: 0;
+  padding: 16px;
+
+  box-sizing: border-box;
+
+  border: none;
+  outline: none;
+  resize: none;
+
+  overflow: auto;
+
+  background: transparent;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 13px;
+  line-height: 24px;
+
+  font-weight: 400;
+
+  color: transparent;
+  caret-color: #ffffff;
+
+  white-space: pre;
+  tab-size: 2;
+
+  z-index: 2;
+}
+
+/* Remove browser focus outline */
+.code-input:focus {
+  outline: none;
+}
+
+/* Keep the actual selection visible */
+.code-input::selection {
+  background: rgba(38, 79, 120, 0.8);
+  color: transparent;
+}
+
+/* =========================================================
+   PRISM TOKEN COLORS
+   ========================================================= */
+
+.code-highlight .token.comment,
+.code-highlight .token.prolog,
+.code-highlight .token.doctype,
+.code-highlight .token.cdata {
+  color: #6a9955;
+}
+
+.code-highlight .token.punctuation {
+  color: #d4d4d4;
+}
+
+.code-highlight .token.property,
+.code-highlight .token.tag,
+.code-highlight .token.constant,
+.code-highlight .token.symbol,
+.code-highlight .token.deleted {
+  color: #569cd6;
+}
+
+.code-highlight .token.boolean,
+.code-highlight .token.number {
+  color: #b5cea8;
+}
+
+.code-highlight .token.selector,
+.code-highlight .token.attr-name,
+.code-highlight .token.string,
+.code-highlight .token.char,
+.code-highlight .token.builtin,
+.code-highlight .token.inserted {
+  color: #ce9178;
+}
+
+.code-highlight .token.operator,
+.code-highlight .token.entity,
+.code-highlight .token.url,
+.language-css .code-highlight .token.string {
+  color: #d4d4d4;
+}
+
+.code-highlight .token.atrule,
+.code-highlight .token.attr-value,
+.code-highlight .token.keyword {
+  color: #c586c0;
+}
+
+.code-highlight .token.function,
+.code-highlight .token.class-name {
+  color: #dcdcaa;
+}
+
+.code-highlight .token.regex,
+.code-highlight .token.important,
+.code-highlight .token.variable {
+  color: #d16969;
+}
+
+/* =========================================================
+   REMOTE CURSOR
+   ========================================================= */
+
+.remote-cursor-indicator {
+  position: absolute;
+
+  z-index: 5;
+
+  width: 0;
+  height: 24px;
+
+  pointer-events: none;
+
+  transform: translateX(0);
+}
+
+.remote-cursor-label {
+  position: absolute;
+
+  top: -22px;
+  left: 0;
+
+  padding: 2px 6px;
+
+  border-radius: 3px;
+
+  font-family:
+    "SFMono-Regular",
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+
+  font-size: 10px;
+  line-height: 16px;
+
+  color: #ffffff;
+
+  white-space: nowrap;
+
+  pointer-events: none;
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+.code-input::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.code-input::-webkit-scrollbar-track {
+  background: #171717;
+}
+
+.code-input::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 5px;
+}
+
+.code-input::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
+}
+
+/* =========================================================
+   WEEK 4 REPLAY
+   Append this block to the END of CodeEditor.css.
+   ========================================================= */
+
+.replay-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border: 1px solid #303030;
+  border-radius: 7px;
+  background: #171717;
+  color: #d7d7d7;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.replay-button:hover {
+  background: #202020;
+  border-color: #444;
+}
+
+.replay-preview-status {
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.14);
+  color: #FFC078;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.replay-panel {
+  flex: 0 0 auto;
+  width: 100%;
+  min-height: 104px;
+  background: #101010;
+  border-top: 1px solid #292929;
+  box-sizing: border-box;
+  padding: 10px 12px 9px;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.replay-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.replay-panel-header > div:first-child {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.replay-panel-header strong {
+  color: #e8e8e8;
+  font-size: 11px;
+}
+
+.replay-panel-header span {
+  color: #777;
+  font-size: 9px;
+}
+
+.replay-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.replay-panel-actions button {
+  min-width: 28px;
+  height: 25px;
+  padding: 0 7px;
+  border: 1px solid #303030;
+  border-radius: 5px;
+  background: #171717;
+  color: #cfcfcf;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.replay-panel-actions button:hover:not(:disabled) {
+  background: #222;
+}
+
+.replay-panel-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.replay-timeline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  min-height: 31px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+}
+
+.replay-point {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 27px;
+  padding: 0;
+  border: 1px solid #2d2d2d;
+  border-radius: 5px;
+  background: #151515;
+  color: #777;
+  font-size: 8px;
+  cursor: pointer;
+}
+
+.replay-point:hover {
+  border-color: #4b4b4b;
+  color: #bbb;
+}
+
+.replay-point.active {
+  border-color: #E8892E;
+  background: rgba(124, 58, 237, 0.14);
+  color: #c4b5fd;
+}
+
+.replay-point-dot {
+  position: absolute;
+  top: 4px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.replay-point span:last-child {
+  margin-top: 8px;
+}
+
+.replay-empty {
+  color: #666;
+  font-size: 9px;
+}
+
+.replay-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 7px;
+  color: #666;
+  font-size: 9px;
+}
+
+@media (max-width: 700px) {
+  .replay-button {
+    padding: 0 8px;
+  }
+
+  .replay-button {
+    font-size: 0;
+  }
+
+  .replay-button::before {
+    content: "↺";
+    font-size: 13px;
+  }
+
+  .replay-details {
+    gap: 7px;
+  }
+}
+
+/* =========================================================
+   OUTPUT WINDOW CONTROLS
+   ========================================================= */
+.editor-output{position:relative;flex:0 0 190px;min-height:120px;display:flex;flex-direction:column;border-top:1px solid #2c2c2c;background:#0d0f10;z-index:6}.output-header{display:flex;align-items:center;justify-content:space-between;height:38px;padding:0 10px;border-bottom:1px solid #25272b;background:#121416;color:#d7d9df;font:600 11px "JetBrains Mono",monospace}.output-title{display:flex;align-items:center;gap:7px}.output-dot{width:6px;height:6px;border-radius:50%;background:#F5B84B;box-shadow:0 0 8px rgba(245,184,75,.5)}.output-actions{display:flex;align-items:center;gap:3px}.output-actions button{width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#777c86;font-size:13px}.output-actions button:hover{background:#1c1f23;color:#fff}.output-content{flex:1;overflow:auto;padding:10px 12px;font:12px/1.6 "JetBrains Mono",monospace;color:#c9ccd3}.output-line{white-space:pre-wrap}.output-empty{color:#626671}.editor-output.output-expanded{position:fixed;inset:18px;z-index:1000;flex:none;border:1px solid #3a3d45;border-radius:12px;box-shadow:0 30px 100px rgba(0,0,0,.7)}
+
+
+/* =========================================================
+   FINAL COLLABORATIVE EDITOR LAYOUT / CURSOR FIXES
+   ========================================================= */
+
+.code-editor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.code-editor-header {
+  flex: 0 0 58px;
+  min-height: 58px;
+  height: 58px;
+  padding: 10px 14px;
+}
+
+.code-editor-heading {
+  min-width: 0;
+}
+
+.code-editor-heading h2 {
+  font-size: 15px;
+}
+
+.code-editor-heading p {
+  font-size: 10px;
+}
+
+.code-editor-actions {
+  flex: 0 0 auto;
+}
+
+.editor-tabs {
+  flex: 0 0 40px;
+  height: 40px;
+  min-height: 40px;
+}
+
+.editor-tab {
+  height: 40px;
+  min-width: 118px;
+}
+
+.new-tab-button {
+  width: 40px;
+  height: 40px;
+  flex-basis: 40px;
+}
+
+.editor-info-bar {
+  flex: 0 0 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.code-area {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.editor-textarea-wrapper {
+  position: relative;
+  flex: 1 1 auto;
+  width: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.code-highlight,
+.code-input {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 24px;
+  padding: 16px;
+  tab-size: 2;
+}
+
+.code-highlight {
+  z-index: 0;
+}
+
+.code-input {
+  z-index: 2;
+}
+
+.remote-cursor-indicator {
+  position: absolute;
+  z-index: 4;
+  width: 2px;
+  height: 24px;
+  pointer-events: none;
+  transform: translateZ(0);
+  will-change: left, top;
+}
+
+.remote-cursor-label {
+  position: absolute;
+  top: -22px;
+  left: 3px;
+  max-width: 150px;
+  min-height: 18px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #fff;
+  font: 600 9px/13px Inter, Arial, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+/* First-line cursors are kept visible instead of being clipped above
+   the editor viewport. */
+.remote-cursor-indicator:first-child .remote-cursor-label {
+  transform: translateY(2px);
+}
+
+.editor-output {
+  flex: 0 0 180px;
+  min-height: 120px;
+}
+
+.editor-footer {
+  flex: 0 0 28px;
+  height: 28px;
+  min-height: 28px;
+}
+
+@media (max-width: 900px) {
+  .code-editor {
+    height: 100%;
+  }
+}
+
+@media (max-width: 700px) {
+  .code-editor-header {
+    flex-basis: 54px;
+    min-height: 54px;
+    height: 54px;
+  }
+
+  .editor-tabs {
+    flex-basis: 38px;
+    height: 38px;
+    min-height: 38px;
+  }
+
+  .editor-tab {
+    height: 38px;
+    min-width: 105px;
+  }
+
+  .new-tab-button {
+    width: 38px;
+    height: 38px;
+    flex-basis: 38px;
+  }
+
+  .remote-cursor-label {
+    max-width: 110px;
+    font-size: 8px;
+  }
+}
+
+
+/* =========================================================
+   AX LERO PROFESSIONAL CODE EDITOR PASS
+   ---------------------------------------------------------
+   Visual/layout polish only. Editor synchronization logic
+   remains unchanged.
+   ========================================================= */
+
+.code-editor {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0d0f12;
+  color: #e7e9ee;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* Compact IDE-style top bar */
+.code-editor .code-editor-header {
+  flex: 0 0 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0 11px;
+  background: #101216;
+  border-bottom: 1px solid #292c33;
+}
+
+.code-editor-heading {
+  gap: 9px;
+}
+
+.code-editor-icon {
+  width: 27px;
+  height: 27px;
+  flex-basis: 27px;
+  border: 1px solid #343740;
+  border-radius: 7px;
+  background: #171a20;
+  color: #ff9f43;
+  font: 700 10px/1 "JetBrains Mono", monospace;
+}
+
+.code-editor-heading h2 {
+  color: #e9ebef;
+  font: 600 12px/1.15 "Space Grotesk", sans-serif;
+}
+
+.code-editor-heading p {
+  margin-top: 2px;
+  color: #656a75;
+  font: 8px/1.2 "JetBrains Mono", monospace;
+}
+
+.code-editor-actions {
+  gap: 4px;
+}
+
+.code-editor .replay-button,
+.code-editor .output-button,
+.code-editor .run-button {
+  height: 29px;
+  border-radius: 6px;
+  font: 600 9px/1 Inter, sans-serif;
+}
+
+.code-editor .replay-button {
+  padding: 0 9px;
+  border-color: #30343c;
+  background: #15181d;
+  color: #aeb2bb;
+}
+
+.code-editor .replay-button:hover {
+  background: #1b1e24;
+  border-color: #4a4e58;
+}
+
+.code-editor .output-button {
+  height: 29px;
+  padding: 0 9px;
+  border-color: #30343c;
+  background: #15181d;
+  color: #9297a2;
+}
+
+.code-editor .output-button.active {
+  border-color: rgba(255,159,67,.45);
+  background: rgba(255,159,67,.12);
+  color: #ffb866;
+}
+
+.code-editor .run-button {
+  height: 29px;
+  padding: 0 12px;
+  border-color: rgba(255,159,67,.35);
+  background: #ff9f43;
+  color: #171717;
+  box-shadow: 0 7px 20px rgba(255,159,67,.12);
+}
+
+.code-editor .run-button:hover {
+  background: #ffb866;
+  border-color: #ffb866;
+}
+
+.code-editor .more-button {
+  width: 29px;
+  height: 29px;
+  color: #727783;
+}
+
+/* Tabs become compact IDE tabs */
+.code-editor .editor-tabs {
+  flex: 0 0 36px;
+  height: 36px;
+  min-height: 36px;
+  background: #0b0d10;
+  border-bottom: 1px solid #292c33;
+}
+
+.code-editor .editor-tab {
+  height: 36px;
+  min-width: 112px;
+  max-width: 180px;
+  padding: 0 10px;
+  gap: 7px;
+  border-right-color: #25282f;
+  background: #111318;
+  color: #747985;
+  font-size: 9px;
+}
+
+.code-editor .editor-tab:hover {
+  background: #171a1f;
+  color: #b8bbc3;
+}
+
+.code-editor .editor-tab.active {
+  background: #171a1f;
+  color: #eef0f3;
+}
+
+.code-editor .editor-tab.active::after {
+  height: 2px;
+  background: #ff9f43;
+}
+
+.code-editor .tab-language {
+  color: #656a75;
+  font-size: 8px;
+}
+
+.code-editor .editor-tab.active .tab-language {
+  color: #ffb866;
+}
+
+.code-editor .tab-close {
+  width: 17px;
+  height: 17px;
+  flex-basis: 17px;
+  font-size: 12px;
+}
+
+.code-editor .new-tab-button {
+  width: 36px;
+  height: 36px;
+  flex-basis: 36px;
+  background: #0b0d10;
+  color: #707580;
+}
+
+/* Compact info strip */
+.code-editor .editor-info-bar {
+  flex: 0 0 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 10px;
+  background: #0f1115;
+  border-bottom: 1px solid #24272e;
+  font: 8px "JetBrains Mono", monospace;
+}
+
+.code-editor .language-label {
+  color: #777c87;
+}
+
+.code-editor .save-status {
+  font: 8px "JetBrains Mono", monospace;
+}
+
+.code-editor .save-status.unsaved {
+  color: #ffb866;
+}
+
+/* IDE body: Explorer + line numbers + editor */
+.code-editor .code-area {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #0d0f12;
+}
+
+/* New compact explorer */
+.code-editor .code-explorer {
+  flex: 0 0 158px;
+  width: 158px;
+  min-width: 158px;
+  min-height: 0;
+  overflow: hidden;
+  border-right: 1px solid #292c33;
+  background: #101216;
+  box-sizing: border-box;
+}
+
+.code-explorer-header {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 9px 0 11px;
+  border-bottom: 1px solid #25282f;
+  box-sizing: border-box;
+}
+
+.code-explorer-header span {
+  color: #747985;
+  font: 600 8px "JetBrains Mono", monospace;
+  letter-spacing: .12em;
+}
+
+.code-explorer-header button {
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #777c87;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.code-explorer-header button:hover {
+  background: #1b1e24;
+  color: #ffb866;
+}
+
+.code-explorer-title {
+  height: 28px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  color: #858a94;
+  box-sizing: border-box;
+}
+
+.code-explorer-title > span {
+  color: #666b76;
+  font-size: 10px;
+}
+
+.code-explorer-title strong {
+  font: 600 8px "JetBrains Mono", monospace;
+  letter-spacing: .08em;
+}
+
+.code-explorer-title small {
+  margin-left: auto;
+  color: #555a64;
+  font: 8px "JetBrains Mono", monospace;
+}
+
+.code-explorer-files {
+  padding: 2px 5px 8px;
+}
+
+.code-explorer-file {
+  width: 100%;
+  height: 29px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #858a94;
+  text-align: left;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.code-explorer-file:hover {
+  background: #181b20;
+  color: #d8dbe1;
+}
+
+.code-explorer-file.active {
+  border-color: rgba(255,159,67,.12);
+  background: rgba(255,159,67,.08);
+  color: #f0f1f4;
+}
+
+.explorer-file-icon {
+  width: 18px;
+  flex: 0 0 18px;
+  color: #ffb866;
+  font: 700 7px "JetBrains Mono", monospace;
+  text-align: center;
+}
+
+.explorer-file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 9px "JetBrains Mono", monospace;
+}
+
+.code-explorer-file i {
+  margin-left: auto;
+  color: #ffb866;
+  font-style: normal;
+  font-size: 7px;
+}
+
+/* Line number rail */
+.code-editor .line-numbers {
+  flex: 0 0 44px;
+  width: 44px;
+  padding: 12px 0;
+  background: #0d0f12;
+  border-right: 1px solid #22252b;
+  font: 10px/21px "JetBrains Mono", monospace;
+  color: #555b66;
+}
+
+.code-editor .line-number {
+  height: 21px;
+  line-height: 21px;
+  padding-right: 10px;
+  font-size: 10px;
+}
+
+/* Highlight and textarea must remain pixel-identical */
+.code-editor .editor-textarea-wrapper {
+  position: relative;
+  flex: 1 1 auto;
+  width: 0;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #0d0f12;
+}
+
+.code-editor .code-highlight,
+.code-editor .code-input {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 12px 14px;
+  margin: 0;
+  box-sizing: border-box;
+  font: 13px/21px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.code-editor .code-highlight {
+  color: #e6e8ec;
+  background: transparent;
+}
+
+.code-editor .code-input {
+  color: transparent;
+  caret-color: #ffb866;
+  background: transparent;
+}
+
+/* ---------------------------------------------------------
+   Remote cursor polish
+   --------------------------------------------------------- */
+
+.code-editor .remote-cursor-indicator {
+  position: absolute;
+  z-index: 5;
+  width: 2px;
+  height: 20px;
+  pointer-events: none;
+  transform: translateX(0);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(255,255,255,.12);
+}
+
+.code-editor .remote-cursor-label {
+  position: absolute;
+  top: -24px;
+  left: 5px;
+  max-width: 120px;
+  min-height: 17px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 4px;
+  box-sizing: border-box;
+  color: #fff;
+  font: 600 8px/12px Inter, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 7px 18px rgba(0,0,0,.4);
+}
+
+/* Don't let a label visually become part of the source text. */
+.code-editor .remote-cursor-indicator::after {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .9;
+}
+
+/* Scrollbars */
+.code-editor .code-input::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.code-editor .code-input::-webkit-scrollbar-track {
+  background: #0d0f12;
+}
+
+.code-editor .code-input::-webkit-scrollbar-thumb {
+  background: #30343c;
+  border-radius: 5px;
+}
+
+.code-editor .code-input::-webkit-scrollbar-thumb:hover {
+  background: #444952;
+}
+
+/* Output and replay sit naturally below the editor */
+.code-editor .editor-output {
+  flex: 0 0 170px;
+  min-height: 110px;
+  background: #0b0d10;
+  border-top: 1px solid #2a2d34;
+}
+
+.code-editor .replay-panel {
+  min-height: 92px;
+  padding: 9px 10px 8px;
+  background: #0b0d10;
+  border-top: 1px solid #2a2d34;
+}
+
+.code-editor .replay-point.active {
+  border-color: #ff9f43;
+  background: rgba(255,159,67,.12);
+  color: #ffb866;
+}
+
+.code-editor .replay-preview-status {
+  background: rgba(255,159,67,.12);
+  color: #ffb866;
+}
+
+.code-editor .editor-footer {
+  flex: 0 0 25px;
+  height: 25px;
+  min-height: 25px;
+  padding: 0 10px;
+  background: #0b0d10;
+  border-top: 1px solid #23262d;
+  color: #676c77;
+  font: 8px "JetBrains Mono", monospace;
+}
+
+@media (max-width: 900px) {
+  .code-editor .code-explorer {
+    flex-basis: 140px;
+    width: 140px;
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 700px) {
+  .code-editor .code-explorer {
+    display: none;
+  }
+
+  .code-editor .code-editor-heading p {
+    display: none;
+  }
+
+  .code-editor .editor-tab {
+    min-width: 96px;
+  }
+}
