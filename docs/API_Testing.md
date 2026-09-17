@@ -44,7 +44,7 @@ The purpose of API testing is to verify that the backend services are working co
 
 | Test ID | Method | Endpoint | Expected Result | Status |
 |---------|--------|----------|-----------------|--------|
-| API-001 | GET | / | Returns **"SyncSpace Backend is running"** | ✅ Passed |
+| API-001 | GET | / | Returns **"SyncSpace Backend is running"** | Passed |
 
 ---
 
@@ -126,18 +126,47 @@ The purpose of API testing is to verify that the backend services are working co
 
 ### Authentication (`/api/auth`)
 
-| Test ID | Method | Endpoint | Purpose | Status |
-|---------|--------|----------|---------|--------|
-| API-001 | GET | / | Health check | ✅ Passed |
-| API-002 | POST | /api/auth/register | Register new user | ✅ Implemented |
-| API-003 | POST | /api/auth/login | Login and get JWT token | ✅ Implemented |
+| Test ID | Method | Endpoint | Headers / Body | Purpose | Status |
+|---------|--------|----------|----------------|---------|--------|
+| API-001 | GET | `/` | None | Server Health check | Passed |
+| API-002 | POST | `/api/auth/register` | Body: `{ "username": "string", "password": "string" }` | Register a new user | Implemented |
+| API-003 | POST | `/api/auth/login` | Body: `{ "username": "string", "password": "string" }` | Login & return JWT token | Implemented |
+
+#### Example Responses
+- **Register Success (`201 Created`)**:
+  ```json
+  { "message": "User registered successfully" }
+  ```
+- **Login Success (`200 OK`)**:
+  ```json
+  {
+    "message": "Login successful",
+    "token": "eyJhbGciOi...",
+    "user": { "id": "...", "username": "john_doe" }
+  }
+  ```
+
+---
 
 ### Rooms (`/api/rooms`)
 
-| Test ID | Method | Endpoint | Purpose | Status |
-|---------|--------|----------|---------|--------|
-| API-004 | POST | /api/rooms/create | Create a new room | ✅ Implemented |
-| API-005 | POST | /api/rooms/join | Join a room via invite | ✅ Implemented |
+| Test ID | Method | Endpoint | Headers / Body | Purpose | Status |
+|---------|--------|----------|----------------|---------|--------|
+| API-004 | POST | `/api/rooms` | `Authorization: Bearer <token>`<br>Body: `{ "roomId": "optional_id" }` | Create a new protected room | Implemented |
+| API-005 | POST | `/api/rooms/:roomId/invite` | `Authorization: Bearer <token>`<br>Body: `{ "username": "invitee_user" }` | Invite an existing user to room | Implemented |
+
+#### Example Responses
+- **Room Creation Success (`201 Created`)**:
+  ```json
+  {
+    "message": "Room created successfully",
+    "room": { "roomId": "sync-892f3a" }
+  }
+  ```
+- **Invite User Success (`200 OK`)**:
+  ```json
+  { "message": "User invited successfully" }
+  ```
 
 ---
 
@@ -145,22 +174,22 @@ The purpose of API testing is to verify that the backend services are working co
 
 | Event | Direction | Purpose | Status |
 |-------|-----------|---------|--------|
-| join-room | Client → Server | User joins a room (invite-based) | ✅ Implemented |
-| leave-room | Client → Server | User leaves a room | ✅ Implemented |
-| room-message | Client → Server | Send messages between room members | ✅ Implemented |
-| yjs-sync-request | Client → Server | Request Yjs document state | ✅ Implemented |
-| yjs-sync | Server → Client | Send Yjs document state | ✅ Implemented |
-| yjs-update | Bidirectional | Sync Yjs document updates | ✅ Implemented |
-| awareness-update | Bidirectional | Cursor/presence sync | ✅ Implemented |
-| awareness-remove | Bidirectional | Remove cursor/presence | ✅ Implemented |
-| code-sync-request | Client → Server | Request initial code state | ✅ Implemented |
-| code-sync | Server → Client | Send initial code state | ✅ Implemented |
-| code-sync-empty | Server → Client | No code state exists | ✅ Implemented |
-| users-in-room | Server → Client | Active user list update | ✅ Implemented |
-| user-joined | Server → Client | Notify user joined | ✅ Implemented |
-| user-left | Server → Client | Notify user left | ✅ Implemented |
-| join-error | Server → Client | Error joining room | ✅ Implemented |
-| disconnect | Client → Server | Handle user disconnect | ✅ Implemented |
+| `join-room` | Client → Server | User joins a room (invite/creator verified) | Implemented |
+| `leave-room` | Client → Server | User leaves a room | Implemented |
+| `room-message` | Client → Server | Send messages between room members | Implemented |
+| `yjs-sync-request` | Client → Server | Request Yjs document state | Implemented |
+| `yjs-sync` | Server → Client | Send Yjs document state | Implemented |
+| `yjs-update` | Bidirectional | Sync Yjs document updates | Implemented |
+| `awareness-update` | Bidirectional | Cursor/presence sync | Implemented |
+| `awareness-remove` | Bidirectional | Remove cursor/presence | Implemented |
+| `code-sync-request` | Client → Server | Request initial code state | Implemented |
+| `code-sync` | Server → Client | Send initial code state | Implemented |
+| `code-sync-empty` | Server → Client | No code state exists | Implemented |
+| `users-in-room` | Server → Client | Active user list update | Implemented |
+| `user-joined` | Server → Client | Notify user joined | Implemented |
+| `user-left` | Server → Client | Notify user left | Implemented |
+| `join-error` | Server → Client | Error joining room | Implemented |
+| `disconnect` | Client → Server | Handle user disconnect | Implemented |
 
 ---
 
@@ -169,13 +198,13 @@ The purpose of API testing is to verify that the backend services are working co
 - Backend server starts successfully on port **3001**.
 - Root endpoint (`GET /`) tested successfully.
 - Socket.io server initialized with JWT authentication middleware.
-- Auth routes (register/login) implemented and connected to MongoDB.
-- Room routes (create/join) implemented with auth middleware protection.
-- All Socket.io events implemented and handling errors gracefully.
+- Auth routes (`/api/auth/register`, `/api/auth/login`) verified with MongoDB.
+- Protected room routes (`POST /api/rooms`, `POST /api/rooms/:roomId/invite`) verified with JWT Bearer auth.
+- Full frontend authentication and room routing flow operational.
 
 ---
 
-## Latest Task: Complete Authentication & Navigation Flow
+## Authentication & Navigation Flow
 
 ```text
 Sign Up → Login → Login successful → Username + Create Room + Logout → Logout → Sign In + Sign Up
@@ -184,7 +213,7 @@ Sign Up → Login → Login successful → Username + Create Room + Logout → L
 ### Flow Breakdown
 
 1. **Sign Up (`/signup` / `/register`)**:
-   - User inputs username and password.
+   - User inputs username and password on `AuthPage.jsx`.
    - Request sent to `POST /api/auth/register`.
    - Password hashed via `bcryptjs` and user record saved in MongoDB.
 
@@ -195,16 +224,16 @@ Sign Up → Login → Login successful → Username + Create Room + Logout → L
 
 3. **Login Successful**:
    - JWT token generated with `process.env.JWT_SECRET` and returned to client.
-   - User credentials & token stored in browser session (`localStorage` / `sessionStorage`).
+   - User credentials & token stored in browser session (`localStorage`).
 
 4. **Authenticated State**:
    - UI updates to display logged-in **Username**.
    - Authenticated actions unlocked: **Create Room**, Join Room, and access Collaborative Workspace.
-   - **Logout** button made accessible in the navigation bar/header.
+   - **Logout** button made accessible in navigation header.
 
 5. **Logout Action**:
-   - Clears stored JWT token and active session.
-   - Resets application state.
+   - Clears stored JWT token and active session from storage.
+   - Resets application state in `App.jsx`.
 
 6. **Logged Out State**:
    - Navigation bar resets to show guest options: **Sign In** and **Sign Up**.

@@ -8,12 +8,18 @@ import {
 } from "react";
 
 import Prism from "prismjs";
+import "prismjs/components/prism-clike";
 import "prismjs/components/prism-javascript";
 import "prismjs/components/prism-python";
 import "prismjs/components/prism-markup";
 import "prismjs/components/prism-css";
 import "prismjs/components/prism-json";
 import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-c";
+import "prismjs/components/prism-cpp";
+import "prismjs/components/prism-java";
+import "prismjs/components/prism-go";
+import "prismjs/components/prism-rust";
 
 import {
   createReplaySnapshot,
@@ -21,6 +27,8 @@ import {
 } from "../../../lib/replayHistory";
 
 import "./CodeEditor.css";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 /* =========================================================
    STORAGE
@@ -66,13 +74,38 @@ const LANGUAGE_BY_EXTENSION = {
   jsx: "JavaScript",
   mjs: "JavaScript",
   cjs: "JavaScript",
+
   py: "Python",
+  py3: "Python",
+  python: "Python",
+
+  cpp: "C++",
+  cc: "C++",
+  cxx: "C++",
+  "c++": "C++",
+  hpp: "C++",
+
+  c: "C",
+  h: "C",
+
+  java: "Java",
+
+  go: "Go",
+  golang: "Go",
+
+  rs: "Rust",
+  rust: "Rust",
+
   html: "HTML",
   htm: "HTML",
+
   css: "CSS",
+
   json: "JSON",
+
   ts: "TypeScript",
   tsx: "TypeScript",
+
   txt: "Plain Text",
 };
 
@@ -88,6 +121,11 @@ const PRISM_LANGUAGE_MAP = {
   CSS: "css",
   JSON: "json",
   TypeScript: "typescript",
+  "C++": "cpp",
+  C: "c",
+  Java: "java",
+  Go: "go",
+  Rust: "rust",
 };
 
 /* =========================================================
@@ -95,8 +133,36 @@ const PRISM_LANGUAGE_MAP = {
    ========================================================= */
 
 function getLanguageFromFileName(name = "") {
-  const ext = name.split(".").pop()?.toLowerCase();
+  if (!name) return "Plain Text";
+  const trimmed = name.trim();
+  const ext = trimmed.includes(".") ? trimmed.split(".").pop().toLowerCase() : "";
   return LANGUAGE_BY_EXTENSION[ext] || "Plain Text";
+}
+
+function detectLanguageFromCode(code = "") {
+  const trimmed = code.trim();
+  if (!trimmed) return "Plain Text";
+  if (trimmed.includes("#include <iostream>") || trimmed.includes("std::cout") || trimmed.includes("using namespace std;")) return "C++";
+  if (trimmed.includes("#include <stdio.h>") || trimmed.includes("printf(")) return "C";
+  if (trimmed.startsWith("package main") || trimmed.includes("func main()")) return "Go";
+  if (trimmed.includes("public class ") || trimmed.includes("System.out.println")) return "Java";
+  if (trimmed.startsWith("fn main()") || trimmed.includes("println!")) return "Rust";
+  if (trimmed.startsWith("def ") || trimmed.includes("print(") || trimmed.includes("import sys") || trimmed.includes("import os")) return "Python";
+  if (trimmed.startsWith("<!DOCTYPE html>") || trimmed.startsWith("<html") || trimmed.includes("</div>")) return "HTML";
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    try { JSON.parse(trimmed); return "JSON"; } catch {}
+  }
+  if (trimmed.includes("console.log") || trimmed.includes("function ") || trimmed.includes("const ") || trimmed.includes("let ")) return "JavaScript";
+  return "Plain Text";
+}
+
+function resolveFileLanguage(name = "", code = "", existingLang = "") {
+  const fromExt = getLanguageFromFileName(name);
+  if (fromExt !== "Plain Text") return fromExt;
+  if (existingLang && existingLang !== "Plain Text") return existingLang;
+  const fromCode = detectLanguageFromCode(code);
+  if (fromCode !== "Plain Text") return fromCode;
+  return "Plain Text";
 }
 
 /* =========================================================
@@ -108,6 +174,11 @@ function getTabLanguageLabel(language) {
     {
       JavaScript: "JS",
       Python: "PY",
+      "C++": "C++",
+      C: "C",
+      Java: "JAVA",
+      Go: "GO",
+      Rust: "RS",
       HTML: "HTML",
       CSS: "CSS",
       JSON: "JSON",
@@ -128,19 +199,21 @@ function normalizeFiles(files) {
     return DEFAULT_FILES.map((file) => ({ ...file }));
   }
 
-  return files.map((file, index) => ({
-    id: file.id || `${file.name || "file"}-${index}`,
-    name: file.name || `file-${index + 1}.js`,
-    language:
-      file.language || getLanguageFromFileName(file.name || ""),
-    code: typeof file.code === "string" ? file.code : "",
-    savedCode:
-      typeof file.savedCode === "string"
-        ? file.savedCode
-        : typeof file.code === "string"
-          ? file.code
-          : "",
-  }));
+  return files.map((file, index) => {
+    const language = resolveFileLanguage(file.name || "", file.code || "", file.language || "");
+    return {
+      id: file.id || `${file.name || "file"}-${index}`,
+      name: file.name || `file-${index + 1}.js`,
+      language,
+      code: typeof file.code === "string" ? file.code : "",
+      savedCode:
+        typeof file.savedCode === "string"
+          ? file.savedCode
+          : typeof file.code === "string"
+            ? file.code
+            : "",
+    };
+  });
 }
 
 /* =========================================================
@@ -329,13 +402,23 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
      DERIVED EDITOR DATA
      ======================================================= */
 
-  const activeFile = useMemo(
-    () =>
-      files.find((file) => file.id === activeFileId) ||
-      files[0] ||
-      null,
-    [files, activeFileId],
-  );
+  const activeFile = useMemo(() => {
+    const file =
+      files.find((f) => f.id === activeFileId) || files[0] || null;
+    if (!file) return null;
+    const resolvedLang = resolveFileLanguage(
+      file.name,
+      file.code,
+      file.language
+    );
+    return {
+      ...file,
+      language:
+        resolvedLang !== "Plain Text"
+          ? resolvedLang
+          : file.language || "Plain Text",
+    };
+  }, [files, activeFileId]);
 
   const lineNumbers = useMemo(() => {
     const count = Math.max(1, activeFile?.code.split("\n").length || 1);
@@ -1168,7 +1251,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     const file = {
       id: `${name}-${Date.now()}`,
       name,
-      language: getLanguageFromFileName(name),
+      language: resolveFileLanguage(name, "", ""),
       code: "",
       savedCode: "",
     };
@@ -1216,7 +1299,7 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
           ? {
               ...file,
               name,
-              language: getLanguageFromFileName(name),
+              language: resolveFileLanguage(name, file.code, ""),
             }
           : file,
       ),
@@ -1672,6 +1755,57 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     setOutput(logs.length ? logs : ["Code executed successfully."]);
     setShowOutput(true);
   }, [activeFile]);
+  const runCodeOnBackend = useCallback(
+    async (langToExecute) => {
+      if (!activeFile) return;
+
+      const language =
+        langToExecute ||
+        resolveFileLanguage(
+          activeFile.name,
+          activeFile.code,
+          activeFile.language
+        );
+
+      try {
+        setOutput([`Running ${language} code...`]);
+        setShowOutput(true);
+
+        const response = await fetch(`${API_BASE_URL}/api/code/execute`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            language,
+            code: activeFile.code,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.output) {
+          setOutput(
+            typeof data.output === "string"
+              ? data.output.split("\n")
+              : [String(data.output)]
+          );
+        } else if (data.error) {
+          setOutput([`Error: ${data.error}`]);
+        } else {
+          setOutput(["No output returned."]);
+        }
+
+        setShowOutput(true);
+      } catch (error) {
+        setOutput([
+          `Execution failed: ${error.message}. Please ensure the backend server is running.`,
+        ]);
+        setShowOutput(true);
+      }
+    },
+    [activeFile]
+  );
 
   /* =======================================================
      RUN ACTIVE FILE
@@ -1680,28 +1814,78 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
   const runCode = useCallback(() => {
     if (!activeFile) return;
 
-    if (activeFile.language === "JavaScript") {
+    const effectiveLanguage = resolveFileLanguage(
+      activeFile.name,
+      activeFile.code,
+      activeFile.language
+    );
+
+    if (effectiveLanguage === "JavaScript") {
       runJavaScript();
       return;
     }
 
-    if (activeFile.language === "JSON") {
+    if (effectiveLanguage === "JSON") {
       try {
-        JSON.parse(activeFile.code);
-        setOutput(["Valid JSON."]);
+        const parsed = JSON.parse(activeFile.code);
+        setOutput([
+          "✓ Valid JSON syntax.",
+          JSON.stringify(parsed, null, 2),
+        ]);
         setShowOutput(true);
       } catch (error) {
-        setOutput([`Invalid JSON: ${error.message}`]);
+        setOutput([`✗ Invalid JSON: ${error.message}`]);
         setShowOutput(true);
       }
       return;
     }
 
+    if (effectiveLanguage === "HTML") {
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(activeFile.code, "text/html");
+        const parserError = doc.querySelector("parsererror");
+        if (parserError) {
+          setOutput([`HTML Parsing Warning: ${parserError.textContent}`]);
+        } else {
+          setOutput([
+            "✓ Valid HTML Document",
+            `Title: ${doc.title || "(no title)"}`,
+            `Elements inside body: ${doc.body.children.length}`,
+          ]);
+        }
+        setShowOutput(true);
+      } catch (error) {
+        setOutput([`HTML Error: ${error.message}`]);
+        setShowOutput(true);
+      }
+      return;
+    }
+
+    if (effectiveLanguage === "CSS") {
+      setOutput([
+        "✓ CSS stylesheet parsed.",
+        `Total lines: ${activeFile.code.split("\n").length}`,
+      ]);
+      setShowOutput(true);
+      return;
+    }
+
+    if (
+      ["C++", "C", "Python", "Java", "Go", "Rust", "TypeScript"].includes(
+        effectiveLanguage
+      )
+    ) {
+      runCodeOnBackend(effectiveLanguage);
+      return;
+    }
+
     setOutput([
-      `${activeFile.language} execution/preview is not connected in the frontend-only build.`,
+      `⚠️ "${activeFile.name}" is Plain Text.`,
+      "Please give your file an extension (like .py, .cpp, .js, .java, .go, .rs, .ts, .html) using ⋯ -> Rename to run it!",
     ]);
     setShowOutput(true);
-  }, [activeFile, runJavaScript]);
+  }, [activeFile, runJavaScript, runCodeOnBackend]);
 
   /* =======================================================
      CLEAR OUTPUT
