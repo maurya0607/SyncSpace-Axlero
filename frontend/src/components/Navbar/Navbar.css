@@ -63,38 +63,36 @@
 }
 
 .brand-mark {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
 
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
 
-  padding: 5px;
-
-  background: #000;
-  border-radius: 7px;
-
-  transition:
-    transform 0.2s ease,
-    background 0.2s ease;
+  transition: transform 0.2s ease;
 }
 
 .brand-mark span {
-  background: #fff;
-  border-radius: 1px;
+  position: absolute;
+  width: 10px;
+  height: 18px;
+  border: 2px solid #FF9F43;
+  border-radius: 3px;
 }
 
 .brand-mark span:first-child {
-  clip-path: polygon(0 0, 100% 0, 0 100%);
+  transform: translateX(-4px) skewY(-25deg);
 }
 
 .brand-mark span:last-child {
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  transform: translateX(4px) skewY(-25deg);
+  border-color: #F5B84B;
 }
 
 .brand:hover .brand-mark {
-  transform: rotate(-4deg);
+  transform: scale(1.08);
 }
 
 .brand-name {
