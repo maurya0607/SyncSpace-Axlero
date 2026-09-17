@@ -66,13 +66,31 @@ const LANGUAGE_BY_EXTENSION = {
   jsx: "JavaScript",
   mjs: "JavaScript",
   cjs: "JavaScript",
+
   py: "Python",
+
+  cpp: "C++",
+  cc: "C++",
+  cxx: "C++",
+
+  c: "C",
+
+  java: "Java",
+
+  go: "Go",
+
+  rs: "Rust",
+
   html: "HTML",
   htm: "HTML",
+
   css: "CSS",
+
   json: "JSON",
+
   ts: "TypeScript",
   tsx: "TypeScript",
+
   txt: "Plain Text",
 };
 
@@ -1672,6 +1690,39 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
     setOutput(logs.length ? logs : ["Code executed successfully."]);
     setShowOutput(true);
   }, [activeFile]);
+  const runCodeOnBackend = async () => {
+  try {
+    setOutput(["Running code..."]);
+    setShowOutput(true);
+
+    const response = await fetch("http://localhost:3001/api/code/execute", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        language: activeFile.language,
+        code: activeFile.code,
+      }),
+    });
+
+    const data = await response.json();
+
+    setOutput([
+      data.output ||
+        data.error ||
+        "No output returned.",
+    ]);
+
+    setShowOutput(true);
+  } catch (error) {
+    setOutput([
+      `Execution failed: ${error.message}`,
+    ]);
+
+    setShowOutput(true);
+  }
+};
 
   /* =======================================================
      RUN ACTIVE FILE
@@ -1697,10 +1748,20 @@ function CodeEditor({ socket, roomId: roomIdProp }) {
       return;
     }
 
-    setOutput([
-      `${activeFile.language} execution/preview is not connected in the frontend-only build.`,
-    ]);
-    setShowOutput(true);
+   if (
+  ["C++", "C", "Python", "Java", "Go", "Rust"].includes(
+    activeFile.language
+  )
+) {
+  runCodeOnBackend();
+  return;
+}
+
+setOutput([
+  `${activeFile.language} execution/preview is not supported yet.`,
+]);
+
+setShowOutput(true);
   }, [activeFile, runJavaScript]);
 
   /* =======================================================

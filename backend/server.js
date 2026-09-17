@@ -11,6 +11,7 @@ const Room = require("./models/Room");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/auth");
 const roomRoutes = require("./routes/room");
+const codeExecutionRoutes = require("./routes/codeExecution");
 
 // Presence System
 const {
@@ -37,6 +38,11 @@ app.use("/api/auth", authRoutes);
 
 // Room APIs
 app.use("/api/rooms", roomRoutes);
+
+// Code Execution APIs
+app.use("/api/execute", codeExecutionRoutes);
+
+app.use("/api/code", codeExecutionRoutes);
 
 const server = http.createServer(app);
 
