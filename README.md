@@ -33,8 +33,8 @@ Users can **create** or **join** rooms, **authenticate** securely, collaborate o
 |---------|-----|
 | Frontend | [sync-space-axlero.vercel.app](https://sync-space-axlero.vercel.app/) |
 | Backend | [syncspace-axlero.onrender.com](https://syncspace-axlero.onrender.com) |
-| Project Report (Google Drive) | [Google Drive PDF / Document Link](https://drive.google.com/) |
-| Presentation Slides | [docs/Presentation.html](docs/Presentation.html) |
+| Project Report (Google Drive) | [Google Drive PDF / Document Link](https://drive.google.com/file/d/1k9m3MlGqdt9gTTPs6ZO6notJ_ayonrI-/view?usp=sharing) |
+| Presentation Slides | [docs/Presentation.html](https://drive.google.com/file/d/1T1XBHEuObQfBH2uL3-KRS0TNss6SxFrs/view?usp=sharing) |
 
 ---
 
@@ -359,4 +359,4 @@ This project is licensed under the **MIT License** — see the [LICENSE](./LICEN
 
 <div align="center">
   <p>Built with dedication by the SyncSpace Team during the <strong>Axlero Internship Program</strong></p>
-</div>
+</div>
