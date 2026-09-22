@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncSpace — Final Presentation | Axlero Internship 2026</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --accent: #06b6d4;
+      --accent2: #10b981;
+      --bg-dark: #0f1117;
+      --bg-card: #1a1d2e;
+      --bg-card2: #1e2235;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --border: #2d3452;
+    }
+
+    html, body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #080a12;
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* ─── TOP PROGRESS BAR ─── */
+    .slide-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent), var(--accent2));
+      width: 6.25%;
+      z-index: 9999;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ─── SCREEN VIEW: 90% WINDOW PRESENTATION ─── */
+    .slides-container {
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overflow-y: scroll;
+      overflow-x: hidden;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      padding: 0;
+      margin: 0;
+    }
+
+    .slide {
+      width: 90vw;
+      max-width: 90vw;
+      height: 90vh;
+      height: 90dvh;
+      min-height: 90vh;
+      max-height: 90vh;
+      margin: 5vh auto;
+      flex-shrink: 0;
+      background: var(--bg-dark);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      scroll-snap-align: center;
+      scroll-snap-stop: always;
+      box-sizing: border-box;
+    }
+
+    /* ─── SLIDE HEADER BAR ─── */
+    .slide-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px clamp(20px, 3vw, 40px);
+      background: linear-gradient(90deg, var(--primary-dark), var(--primary), var(--accent));
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #fff;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+
+    .slide-num {
+      background: rgba(255,255,255,0.18);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 10px;
+    }
+
+    /* ─── SLIDE BODY (AUTO-FITS REMAINING HEIGHT) ─── */
+    .slide-body {
+      flex: 1;
+      min-height: 0;
+      padding: clamp(16px, 2.8vh, 32px) clamp(24px, 4.5vw, 64px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow-y: auto;
+    }
+
+    .slide-body::-webkit-scrollbar {
+      width: 5px;
+    }
+    .slide-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .slide-body::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
+
+    /* ─── TITLE SLIDE ─── */
+    .slide-title {
+      background: radial-gradient(ellipse at 30% 50%, #1e1560 0%, var(--bg-dark) 70%);
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    .title-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 24px;
+      padding: 5px 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .title-main {
+      font-size: 68px;
+      font-weight: 900;
+      letter-spacing: -2px;
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--primary) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+
+    .title-sub {
+      font-size: 17px;
+      color: var(--muted);
+      font-weight: 400;
+      margin-bottom: 32px;
+    }
+
+    .title-meta {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .meta-pill {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 7px 18px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meta-pill span { color: var(--text); font-weight: 600; }
+
+    /* ─── HEADING STYLES ─── */
+    .slide-heading {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .slide-heading::before {
+      content: '';
+      display: block;
+      width: 4px;
+      height: 28px;
+      background: linear-gradient(to bottom, var(--primary), var(--accent));
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    /* ─── TABLE ─── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th {
+      background: var(--bg-card);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 8px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(45,52,82,0.5);
+      color: var(--text);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    td:first-child { color: var(--accent); font-weight: 600; font-family: 'Courier New', monospace; font-size: 11px; }
+
+    /* ─── GRID LAYOUTS ─── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; flex: 1; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .card ul { list-style: none; }
+    .card ul li {
+      font-size: 11.5px;
+      color: var(--muted);
+      padding: 4px 0;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+    }
+
+    .card ul li::before {
+      content: '»';
+      color: var(--accent);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 0;
+    }
+
+    /* ─── STATUS PILLS ─── */
+    .status-done {
+      display: inline-block;
+      background: rgba(16,185,129,0.12);
+      color: var(--accent2);
+      border: 1px solid rgba(16,185,129,0.25);
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    /* ─── TECH PILLS ─── */
+    .tech-pill {
+      display: inline-block;
+      background: rgba(99,102,241,0.12);
+      color: var(--primary);
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      margin: 3px;
+    }
+
+    .tech-pill.accent {
+      background: rgba(6,182,212,0.1);
+      color: var(--accent);
+      border-color: rgba(6,182,212,0.3);
+    }
+
+    /* ─── FLOW DIAGRAM ─── */
+    .flow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin: 8px 0;
+    }
+
+    .flow-box {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .flow-arrow {
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    /* ─── ARCH DIAGRAM ─── */
+    .arch-diagram {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 1.8;
+      color: var(--muted);
+      white-space: pre;
+    }
+
+    .arch-diagram .hl { color: var(--accent); font-weight: 700; }
+    .arch-diagram .hl2 { color: var(--primary); font-weight: 700; }
+
+    /* ─── TEAM CARD ─── */
+    .team-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .team-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .team-role {
+      font-size: 11.5px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .team-lead-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 12px;
+      padding: 2px 10px;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #fff;
+      width: fit-content;
+    }
+
+    /* ─── URL STYLE ─── */
+    .url {
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+    }
+
+    /* ─── BIG STAT ─── */
+    .stat-big {
+      font-size: 48px;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ─── FOOTER BAR ─── */
+    .slide-footer {
+      padding: 7px 28px;
+      background: rgba(255,255,255,0.02);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 10px;
+      color: rgba(148,163,184,0.5);
+      flex-shrink: 0;
+    }
+
+    /* ─── FLOATING PRESENTATION HUD (SCREEN ONLY) ─── */
+    .hud-controls {
+      position: fixed;
+      bottom: 22px;
+      right: 28px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(15, 17, 23, 0.88);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55), 0 0 1px rgba(255,255,255,0.2) inset;
+      border-radius: 32px;
+      padding: 6px 14px;
+      z-index: 9999;
+      user-select: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .hud-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text);
+      cursor: pointer;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      transition: all 0.18s ease;
+    }
+
+    .hud-btn:hover {
+      background: rgba(99, 102, 241, 0.3);
+      border-color: var(--primary);
+      color: #fff;
+    }
+
+    .hud-btn:active {
+      transform: scale(0.92);
+    }
+
+    .hud-pill {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.04em;
+      padding: 0 8px;
+      min-width: 82px;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .hud-sep {
+      width: 1px;
+      height: 16px;
+      background: var(--border);
+      margin: 0 3px;
+    }
+
+    .hud-hint {
+      position: fixed;
+      bottom: 26px;
+      left: 28px;
+      font-size: 11px;
+      color: rgba(148, 163, 184, 0.5);
+      letter-spacing: 0.04em;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .hud-hint kbd {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 10px;
+      color: var(--muted);
+      font-family: inherit;
+    }
+
+    /* ─── PRINT ─── */
+    @media print {
+      @page { size: A4 landscape; margin: 0; }
+      html, body {
+        background: #0f1117 !important;
+        overflow: visible !important;
+        height: auto !important;
+        width: auto !important;
+      }
+      .hud-controls, .slide-progress, .hud-hint, .print-helper {
+        display: none !important;
+      }
+      .slides-container {
+        padding: 0 !important;
+        gap: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+      }
+      .slide {
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Slide Top Progress Bar -->
+<div class="slide-progress" id="slideProgress"></div>
+
+<!-- Slide Presentation Navigation HUD -->
+<div class="hud-controls" id="hudControls">
+  <button id="prevBtn" class="hud-btn" title="Previous Slide (← / ↑ / PgUp)">◀</button>
+  <span class="hud-pill" id="slideIndicator">01 / 16</span>
+  <button id="nextBtn" class="hud-btn" title="Next Slide (→ / ↓ / Space / PgDn)">▶</button>
+  <span class="hud-sep"></span>
+  <button id="fsBtn" class="hud-btn" title="Toggle Fullscreen (F)">⛶</button>
+  <button id="printBtn" class="hud-btn" title="Export as PDF (Ctrl+P)">⎙</button>
+</div>
+
+<div class="hud-hint">
+  Use <kbd>→</kbd> <kbd>←</kbd> or <kbd>Scroll</kbd> to navigate | <kbd>F</kbd> for Fullscreen
+</div>
+
+<div class="slides-container">
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 1: TITLE -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span>Axlero Internship Program 2026</span>
+    </div>
+    <div class="slide-body slide-title">
+      <div class="title-badge">Axlero Internship Program</div>
+      <div class="title-main">SyncSpace</div>
+      <div class="title-sub">Real-time Collaborative Whiteboard and Code Editor</div>
+      <div class="title-meta">
+        <div class="meta-pill"><span>Status:</span> Completed</div>
+        <div class="meta-pill"><span>Stack:</span> MERN + Socket.IO + Yjs</div>
+        <div class="meta-pill"><span>Deployed:</span> Vercel + Render</div>
+        <div class="meta-pill"><span>Date:</span> September 2026</div>
+      </div>
+    </div>
+    <div class="slide-footer">
+      <span>Axlero Internship Program</span>
+      <span>Team SyncSpace | September 2026</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 2: AGENDA -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">02 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Agenda</div>
+      <div class="grid-2" style="align-content: start;">
+        <div class="card">
+          <div class="card-title">Part 1 — Project Overview</div>
+          <ul>
+            <li>Project Introduction</li>
+            <li>Team Members</li>
+            <li>Objectives and Goals</li>
+            <li>System Architecture</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Part 2 — Technical Implementation</div>
+          <ul>
+            <li>Technology Stack</li>
+            <li>Authentication Flow</li>
+            <li>Collaborative Code Editor</li>
+            <li>Shared Whiteboard</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Part 3 — Infrastructure</div>
+          <ul>
+            <li>Database Design</li>
+            <li>Socket.IO Events</li>
+            <li>Code Execution Engine</li>
+            <li>Real-time Presence</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Part 4 — Results</div>
+          <ul>
+            <li>Deployment Details</li>
+            <li>Project Status Checklist</li>
+            <li>Challenges and Solutions</li>
+            <li>Conclusion</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Agenda</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 3: PROJECT OVERVIEW -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">03 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Project Overview</div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="card">
+            <div class="card-title">What is SyncSpace?</div>
+            <p style="font-size:12.5px;color:var(--muted);line-height:1.7;">
+              SyncSpace is a real-time collaborative platform that combines a shared whiteboard and a multi-file code editor in a single workspace. Distributed teams can brainstorm, design, and build software together — simultaneously, in real time.
+            </p>
+          </div>
+          <div class="card">
+            <div class="card-title">Key Statistics</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:4px;">
+              <div style="text-align:center;">
+                <div class="stat-big">4</div>
+                <div class="stat-label">Team Members</div>
+              </div>
+              <div style="text-align:center;">
+                <div class="stat-big">12</div>
+                <div class="stat-label">Features Done</div>
+              </div>
+              <div style="text-align:center;">
+                <div class="stat-big">17</div>
+                <div class="stat-label">Socket Events</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Project Info</div>
+          <table style="margin-top:4px;">
+            <tr><td style="color:var(--muted);font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;">Project Name</td><td style="color:var(--text);font-family:Inter,sans-serif;font-size:11.5px;">SyncSpace</td></tr>
+            <tr><td style="color:var(--muted);font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;">Type</td><td style="color:var(--text);font-family:Inter,sans-serif;font-size:11.5px;">Full-stack Web Application</td></tr>
+            <tr><td style="color:var(--muted);font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;">Category</td><td style="color:var(--text);font-family:Inter,sans-serif;font-size:11.5px;">Real-time Collaboration Tool</td></tr>
+            <tr><td style="color:var(--muted);font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;">Frontend</td><td style="color:var(--accent);font-family:monospace;font-size:10px;">sync-space-axlero.vercel.app</td></tr>
+            <tr><td style="color:var(--muted);font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;">Backend</td><td style="color:var(--accent);font-family:monospace;font-size:10px;">syncspace-axlero.onrender.com</td></tr>
+            <tr><td style="color:var(--muted);font-family:Inter,sans-serif;font-weight:500;font-size:11.5px;">Status</td><td><span class="status-done">Completed</span></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Project Overview</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 4: TEAM -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">04 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Team Members</div>
+      <div class="grid-3" style="align-content:start;">
+        <div class="team-card">
+          <div class="team-name">Chandru</div>
+          <div class="team-role">Frontend and MERN Development</div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Khushi</div>
+          <div class="team-role">Backend Development</div>
+        </div>
+        <div class="team-card">
+          <div class="team-name">Akshaya</div>
+          <div class="team-role">Backend Development and MERN Stack Support</div>
+        </div>
+        <div class="team-card" style="grid-column:span 3;border-color:var(--primary);">
+          <div class="team-lead-badge">Team Lead</div>
+          <div class="team-name" style="margin-top:6px;">Vishal</div>
+          <div class="team-role">Database, Testing, Documentation and Deployment</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Team</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 5: OBJECTIVES -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">05 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Objectives</div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12.5px;font-weight:700;">Real-time Collaborative Code Editor</span>
+              <span class="status-done">Done</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);">Multi-user code editing with Yjs CRDT and multi-file support</p>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12.5px;font-weight:700;">Shared Whiteboard</span>
+              <span class="status-done">Done</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);">Canvas-based drawing with real-time stroke synchronization</p>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12.5px;font-weight:700;">Secure Authentication</span>
+              <span class="status-done">Done</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);">JWT tokens, bcrypt hashing, protected routes</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12.5px;font-weight:700;">Room-based Collaboration</span>
+              <span class="status-done">Done</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);">Create and invite users to rooms with membership validation</p>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12.5px;font-weight:700;">Persistent State</span>
+              <span class="status-done">Done</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);">Code and Yjs binary state persisted to MongoDB</p>
+          </div>
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12.5px;font-weight:700;">Production Deployment</span>
+              <span class="status-done">Done</span>
+            </div>
+            <p style="font-size:11.5px;color:var(--muted);">Vercel (frontend) and Render (backend) fully live</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Objectives</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 6: SYSTEM ARCHITECTURE -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">06 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">System Architecture</div>
+      <div class="grid-2">
+        <div class="arch-diagram"><span class="hl">Client (Browser — React + Vite)</span>
+           |
+           | HTTP REST         WebSocket
+           | JWT Auth          Socket.IO
+           |_______________________|
+                       |
+        <span class="hl2">Backend Server (Node.js + Express)</span>
+               |           |           |
+          REST APIs    Socket.IO    Yjs CRDT
+         /api/auth    join-room    yjsManager
+         /api/rooms   yjs-update  in-memory docs
+         /api/execute code-update
+               |
+        <span class="hl">MongoDB Atlas</span>
+         users | rooms | codedocuments | whiteboards</div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card">
+            <div class="card-title">Communication Layers</div>
+            <ul>
+              <li>HTTP REST — Authentication + Room Management</li>
+              <li>Socket.IO WebSocket — All real-time events</li>
+              <li>JWT Middleware — Secures both REST and Socket.IO</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-title">Data Flow</div>
+            <div class="flow">
+              <div class="flow-box">User Action</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">Socket Event</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">Server</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">Broadcast</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">All Clients</div>
+            </div>
+            <div class="flow" style="margin-top:8px;">
+              <div class="flow-box">Yjs Update</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">Dirty Queue</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">5s Timer</div>
+              <div class="flow-arrow">→</div>
+              <div class="flow-box">MongoDB</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>System Architecture</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 7: TECH STACK -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">07 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Technology Stack</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Frontend</div>
+          <table>
+            <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>React</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">19.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">UI Framework</td></tr>
+              <tr><td>Vite</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">8.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Build Tool and Dev Server</td></tr>
+              <tr><td>Socket.IO Client</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">4.8.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">WebSocket communication</td></tr>
+              <tr><td>Yjs</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">13.6.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">CRDT collaborative state</td></tr>
+              <tr><td>PrismJS</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">1.30.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Syntax highlighting</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;">
+            <span class="tech-pill">React</span>
+            <span class="tech-pill">Vite</span>
+            <span class="tech-pill accent">Socket.IO</span>
+            <span class="tech-pill accent">Yjs</span>
+            <span class="tech-pill">PrismJS</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Backend</div>
+          <table>
+            <thead><tr><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>Node.js</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">18.x+</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Runtime environment</td></tr>
+              <tr><td>Express.js</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">5.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">REST API framework</td></tr>
+              <tr><td>Socket.IO</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">4.8.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">WebSocket event handling</td></tr>
+              <tr><td>MongoDB + Mongoose</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">9.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Database and ODM</td></tr>
+              <tr><td>JWT + bcryptjs</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">9.x / 3.x</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Auth and hashing</td></tr>
+            </tbody>
+          </table>
+          <div style="margin-top:12px;">
+            <span class="tech-pill">Node.js</span>
+            <span class="tech-pill">Express</span>
+            <span class="tech-pill accent">MongoDB</span>
+            <span class="tech-pill accent">JWT</span>
+            <span class="tech-pill">bcryptjs</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Technology Stack</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 8: AUTHENTICATION FLOW -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">08 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Authentication Flow</div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card">
+            <div class="card-title">Registration</div>
+            <div class="flow" style="flex-direction:column;align-items:flex-start;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">User submits username + password</div></div>
+              <div class="flow-arrow" style="margin-left:12px;">↓</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">POST /api/auth/register</div></div>
+              <div class="flow-arrow" style="margin-left:12px;">↓</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">bcryptjs hashes password</div></div>
+              <div class="flow-arrow" style="margin-left:12px;">↓</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">User saved to MongoDB</div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card">
+            <div class="card-title">Login and Token Flow</div>
+            <div class="flow" style="flex-direction:column;align-items:flex-start;gap:8px;">
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">POST /api/auth/login</div></div>
+              <div class="flow-arrow" style="margin-left:12px;">↓</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">Validate credentials with bcrypt</div></div>
+              <div class="flow-arrow" style="margin-left:12px;">↓</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">JWT token generated (JWT_SECRET)</div></div>
+              <div class="flow-arrow" style="margin-left:12px;">↓</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">Token stored in localStorage</div></div>
+              <div class="flow-arrow" style="margin-left:12px;">↓</div>
+              <div style="display:flex;align-items:center;gap:8px;"><div class="flow-box">Token sent in Bearer header for all protected requests</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Socket.IO Authentication</div>
+            <p style="font-size:11.5px;color:var(--muted);line-height:1.6;">JWT token is verified in Socket.IO middleware on every connection. Invalid or missing tokens are rejected before any room events are processed.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Authentication Flow</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 9: COLLABORATIVE CODE EDITOR -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">09 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Collaborative Code Editor</div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card">
+            <div class="card-title">Yjs CRDT Engine</div>
+            <p style="font-size:11.5px;color:var(--muted);line-height:1.7;margin-bottom:8px;">
+              Yjs (Conflict-free Replicated Data Type) ensures that edits from multiple users merge correctly without data loss or conflicts, even under network latency.
+            </p>
+            <ul>
+              <li>Server holds in-memory Yjs documents per room</li>
+              <li>Client requests full state via yjs-sync-request</li>
+              <li>Incremental updates via yjs-update events</li>
+              <li>Binary state persisted to MongoDB every 5 seconds</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-title">Multi-file Support</div>
+            <ul>
+              <li>Create, rename, and delete files per room</li>
+              <li>Active file tab synchronized across all users</li>
+              <li>Each file tracked with unique ID and revision number</li>
+              <li>File list persisted in roomCodeState in-memory Map</li>
+            </ul>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card">
+            <div class="card-title">Sync Events</div>
+            <table>
+              <thead><tr><th>Event</th><th>Direction</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td>code-sync-request</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Client to Server</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Request initial state</td></tr>
+                <tr><td>code-sync</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Server to Client</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Send full code state</td></tr>
+                <tr><td>code-update</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Bidirectional</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Incremental update</td></tr>
+                <tr><td>active-file-change</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Bidirectional</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Sync active tab</td></tr>
+                <tr><td>yjs-update</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Bidirectional</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Yjs CRDT delta</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title">Additional Features</div>
+            <ul>
+              <li>Syntax highlighting via PrismJS</li>
+              <li>Revision counter prevents stale state conflicts</li>
+              <li>Initial sync sent only once per socket-room pair</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Collaborative Code Editor</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 10: WHITEBOARD + CODE EXECUTION -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">10 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Whiteboard and Code Execution</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Shared Whiteboard</div>
+          <ul style="margin-bottom:10px;">
+            <li>Canvas-based drawing with HTML Canvas API</li>
+            <li>Real-time stroke synchronization via Socket.IO</li>
+            <li>Multiple users can draw simultaneously</li>
+            <li>Drawing data stored per room in whiteboards collection</li>
+            <li>Supports freehand drawing, shapes, and annotations</li>
+          </ul>
+          <div class="card-title" style="margin-top:14px;">Workspace Modes</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <div class="flow-box">Whiteboard Mode</div>
+            <div class="flow-box">Code Editor Mode</div>
+            <div class="flow-box">Split Mode</div>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:8px;">Mode stored in URL query param (?mode=board|code|split) and synchronized across navigation</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Code Execution Engine</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:10px;">
+            The platform includes an execution engine that allows users to run code directly from the collaborative editor.
+          </p>
+          <table>
+            <thead><tr><th>Property</th><th>Details</th></tr></thead>
+            <tbody>
+              <tr><td>Endpoint</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">POST /api/execute</td></tr>
+              <tr><td>Route</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">routes/codeExecution.js</td></tr>
+              <tr><td>Input</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Code content + language</td></tr>
+              <tr><td>Output</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Execution result or error</td></tr>
+            </tbody>
+          </table>
+          <div class="card-title" style="margin-top:14px;">Also accessible at</div>
+          <p style="color:var(--accent);font-family:monospace;font-size:11px;margin-top:6px;">POST /api/code</p>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Whiteboard and Code Execution</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 11: PRESENCE AND CURSOR SYNC -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">11 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Real-time Presence and Cursor Awareness</div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card">
+            <div class="card-title">Presence System</div>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;">Implemented in <span style="color:var(--accent);font-family:monospace;">services/presence.js</span> as an in-memory Map. Tracks active users per room.</p>
+            <ul>
+              <li>addUser — registers socket in room on join</li>
+              <li>removeUser — cleans up on leave or disconnect</li>
+              <li>getUsers — returns active socket list per room</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-title">User Events</div>
+            <table>
+              <thead><tr><th>Event</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td>users-in-room</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Broadcast user list update</td></tr>
+                <tr><td>user-joined</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Notify others of new user</td></tr>
+                <tr><td>user-left</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Notify others of departure</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card">
+            <div class="card-title">Cursor Awareness</div>
+            <p style="font-size:11.5px;color:var(--muted);margin-bottom:10px;">Cursor positions and user metadata broadcast in real time using Yjs awareness protocol over Socket.IO.</p>
+            <table>
+              <thead><tr><th>Event</th><th>Direction</th><th>Purpose</th></tr></thead>
+              <tbody>
+                <tr><td>awareness-update</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Bidirectional</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Broadcast cursor + user data</td></tr>
+                <tr><td>awareness-remove</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Bidirectional</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Remove user cursor on leave</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card">
+            <div class="card-title">Disconnect Handling</div>
+            <ul>
+              <li>Detects all rooms the socket was in</li>
+              <li>Removes user from presence Map</li>
+              <li>Broadcasts users-in-room update to all</li>
+              <li>Sends user-left and awareness-remove events</li>
+              <li>Cleans up initial sync markers</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Presence and Cursor Awareness</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 12: DATABASE DESIGN -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">12 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Database Design</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;">
+        <div class="card">
+          <div class="card-title">users collection</div>
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>_id</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">ObjectId</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Primary key</td></tr>
+              <tr><td>username</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">String</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">unique, required</td></tr>
+              <tr><td>password</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">String</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">bcrypt hashed</td></tr>
+              <tr><td>createdAt</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Date</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">auto timestamp</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">rooms collection</div>
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>roomId</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">String</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">unique, required</td></tr>
+              <tr><td>activeUsers</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Number</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">default 0</td></tr>
+              <tr><td>invitedUsers</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">ObjectId[]</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">ref: User</td></tr>
+              <tr><td>updatedAt</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Date</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">auto timestamp</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">codedocuments collection</div>
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>roomId</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">String</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">indexed</td></tr>
+              <tr><td>fileName</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">String</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">required</td></tr>
+              <tr><td>content</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">String</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">code text</td></tr>
+              <tr><td>yjsState</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Buffer</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">binary Yjs state</td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:10px;color:var(--muted);margin-top:8px;">Compound unique index: { roomId, fileName }</p>
+        </div>
+        <div class="card">
+          <div class="card-title">whiteboards collection</div>
+          <table>
+            <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>roomId</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">String</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">room identifier</td></tr>
+              <tr><td>drawingData</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Object/Array</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">serialized vectors</td></tr>
+              <tr><td>updatedAt</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">Date</td><td style="color:var(--muted);font-family:Inter;font-size:11px;">last updated</td></tr>
+            </tbody>
+          </table>
+          <p style="font-size:10px;color:var(--muted);margin-top:8px;">ODM: Mongoose | Database: MongoDB Atlas</p>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Database Design</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 13: DEPLOYMENT -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">13 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Deployment</div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card" style="border-color:#333;">
+            <div class="card-title">Frontend — Vercel</div>
+            <table>
+              <tbody>
+                <tr><td>Platform</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">Vercel</td></tr>
+                <tr><td>Root Dir</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">frontend/</td></tr>
+                <tr><td>Build Cmd</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">npm run build</td></tr>
+                <tr><td>Output Dir</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">dist/</td></tr>
+                <tr><td>Live URL</td><td style="color:var(--accent);font-family:monospace;font-size:10px;">sync-space-axlero.vercel.app</td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:10px;background:var(--bg-dark);border-radius:6px;padding:8px 10px;">
+              <p style="font-size:10px;color:var(--muted);">Environment Variable</p>
+              <p style="font-size:10.5px;color:var(--accent);font-family:monospace;margin-top:2px;">VITE_API_URL=https://syncspace-axlero.onrender.com</p>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="card" style="border-color:#333;">
+            <div class="card-title">Backend — Render</div>
+            <table>
+              <tbody>
+                <tr><td>Platform</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">Render</td></tr>
+                <tr><td>Root Dir</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">backend/</td></tr>
+                <tr><td>Build Cmd</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">npm install</td></tr>
+                <tr><td>Start Cmd</td><td style="color:var(--text);font-family:Inter;font-size:11.5px;">node server.js</td></tr>
+                <tr><td>Live URL</td><td style="color:var(--accent);font-family:monospace;font-size:10px;">syncspace-axlero.onrender.com</td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:10px;background:var(--bg-dark);border-radius:6px;padding:8px 10px;">
+              <p style="font-size:10px;color:var(--muted);margin-bottom:4px;">Environment Variables</p>
+              <p style="font-size:10px;color:var(--accent);font-family:monospace;">PORT &nbsp; MONGO_URI &nbsp; JWT_SECRET &nbsp; FRONTEND_URL</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Deployment</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 14: PROJECT STATUS -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">14 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Project Status</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Features Completed</div>
+          <table>
+            <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">User Authentication (Register / Login)</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">JWT-protected REST APIs</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Room Creation and Invite System</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Socket.IO Real-time Communication</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Collaborative Code Editor (Yjs)</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Multi-file Code Support</td><td><span class="status-done">Completed</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-title">Infrastructure Completed</div>
+          <table>
+            <thead><tr><th>Feature</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Code Execution Engine</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Shared Whiteboard (Canvas)</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Real-time Presence and Cursor Sync</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">MongoDB Persistence (Code + Yjs)</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Frontend Deployment — Vercel</td><td><span class="status-done">Completed</span></td></tr>
+              <tr><td style="font-family:Inter;font-size:11.5px;color:var(--text);">Backend Deployment — Render</td><td><span class="status-done">Completed</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Project Status</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 15: CHALLENGES -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">15 / 16</span>
+    </div>
+    <div class="slide-body">
+      <div class="slide-heading">Challenges and Solutions</div>
+      <div class="grid-2">
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="card">
+            <div class="card-title">Yjs State Persistence</div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;">Yjs operates in-memory — persisting binary state across server restarts was non-trivial.</p>
+            <p style="font-size:11.5px;color:var(--text);">Implemented a dirty-room Set and a 5-second persistence timer that saves changed Yjs documents as binary Buffer to MongoDB.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">Socket.IO Authentication</div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;">Securing WebSocket connections to prevent unauthorized room access.</p>
+            <p style="font-size:11.5px;color:var(--text);">Socket.IO middleware verifies JWT from handshake auth object before any event is processed.</p>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="card">
+            <div class="card-title">Multi-user Code Conflicts</div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;">Simultaneous edits caused race conditions with simple event-based syncing.</p>
+            <p style="font-size:11.5px;color:var(--text);">Adopted Yjs CRDT ensuring conflict-free merging of concurrent edits without data loss.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">Initial State Delivery</div>
+            <p style="font-size:11px;color:var(--muted);margin-bottom:6px;">New users joining mid-session needed full current state, not just future updates.</p>
+            <p style="font-size:11.5px;color:var(--text);">Implemented sync-request / sync event pairs for both Yjs (yjs-sync-request / yjs-sync) and code state to deliver full state on join.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Axlero Internship Program</span><span>Challenges and Solutions</span></div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- SLIDE 16: CONCLUSION -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="slide">
+    <div class="slide-header">
+      <span>SyncSpace — Final Presentation</span>
+      <span class="slide-num">16 / 16</span>
+    </div>
+    <div class="slide-body" style="justify-content:center;">
+      <div class="slide-heading">Conclusion</div>
+      <div class="grid-2" style="flex:none;margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title">What We Built</div>
+          <ul>
+            <li>Full-stack MERN application with real-time collaboration</li>
+            <li>Yjs CRDT-based conflict-free code editing for multiple users</li>
+            <li>Shared canvas whiteboard with live synchronization</li>
+            <li>JWT-secured authentication and room management</li>
+            <li>Code execution engine integrated within the editor</li>
+            <li>Production deployment on Vercel and Render</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">What We Learned</div>
+          <ul>
+            <li>Real-time bidirectional communication with Socket.IO</li>
+            <li>CRDT algorithms for distributed collaborative systems</li>
+            <li>JWT authentication and secure API design patterns</li>
+            <li>MongoDB schema design and Mongoose ODM</li>
+            <li>Git branching workflows for team collaboration</li>
+            <li>Cloud deployment pipelines (Vercel and Render)</li>
+          </ul>
+        </div>
+      </div>
+      <div style="text-align:center;padding:20px;background:linear-gradient(135deg,rgba(99,102,241,0.08),rgba(6,182,212,0.08));border-radius:12px;border:1px solid var(--border);">
+        <div style="font-size:22px;font-weight:800;color:var(--text);margin-bottom:6px;">SyncSpace — Successfully Completed</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Axlero Internship Program | September 2026</div>
+        <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+          <div class="meta-pill"><span>Frontend:</span> sync-space-axlero.vercel.app</div>
+          <div class="meta-pill"><span>Backend:</span> syncspace-axlero.onrender.com</div>
+        </div>
+      </div>
+    </div>
+    <div class="slide-footer"><span>Thank You</span><span>Team SyncSpace | Axlero Internship Program 2026</span></div>
+  </div>
+
+</div>
+
+<!-- Print to PDF instructions (class print-helper for print & presentation cleanliness) -->
+<div class="print-helper" style="display:none;">
+  <p style="font-weight:700;color:#f1f5f9;margin-bottom:8px;">How to Export as PDF</p>
+  <p>Open this file in your browser, then press Ctrl + P.</p>
+  <p>Set destination to "Save as PDF" and paper size to "A4 Landscape".</p>
+</div>
+
+<script>
+  (function() {
+    const container = document.querySelector('.slides-container');
+    const slides = Array.from(document.querySelectorAll('.slide'));
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const fsBtn = document.getElementById('fsBtn');
+    const printBtn = document.getElementById('printBtn');
+    const indicator = document.getElementById('slideIndicator');
+    const progressBar = document.getElementById('slideProgress');
+
+    let currentIndex = 0;
+    const totalSlides = slides.length;
+
+    function formatNum(n) {
+      return n < 10 ? '0' + n : '' + n;
+    }
+
+    function updateState(idx) {
+      if (idx < 0) idx = 0;
+      if (idx >= totalSlides) idx = totalSlides - 1;
+      currentIndex = idx;
+
+      if (indicator) {
+        indicator.textContent = `${formatNum(idx + 1)} / ${formatNum(totalSlides)}`;
+      }
+
+      if (progressBar) {
+        const pct = ((idx + 1) / totalSlides) * 100;
+        progressBar.style.width = pct + '%';
+      }
+
+      prevBtn.disabled = idx === 0;
+      nextBtn.disabled = idx === totalSlides - 1;
+      prevBtn.style.opacity = idx === 0 ? '0.35' : '1';
+      nextBtn.style.opacity = idx === totalSlides - 1 ? '0.35' : '1';
+    }
+
+    function scrollToSlide(idx) {
+      if (idx < 0) idx = 0;
+      if (idx >= totalSlides) idx = totalSlides - 1;
+      slides[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      updateState(idx);
+    }
+
+    // Observe slides to update HUD on manual scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const idx = slides.indexOf(entry.target);
+          if (idx !== -1) {
+            updateState(idx);
+          }
+        }
+      });
+    }, {
+      root: container,
+      threshold: 0.55
+    });
+
+    slides.forEach(slide => observer.observe(slide));
+
+    // Button Listeners
+    if (prevBtn) prevBtn.addEventListener('click', () => scrollToSlide(currentIndex - 1));
+    if (nextBtn) nextBtn.addEventListener('click', () => scrollToSlide(currentIndex + 1));
+
+    // Fullscreen Toggle
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+        fsBtn.innerHTML = '✕';
+        fsBtn.title = 'Exit Fullscreen (Esc / F)';
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        fsBtn.innerHTML = '⛶';
+        fsBtn.title = 'Toggle Fullscreen (F)';
+      }
+    }
+
+    if (fsBtn) fsBtn.addEventListener('click', toggleFullscreen);
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && fsBtn) {
+        fsBtn.innerHTML = '⛶';
+        fsBtn.title = 'Toggle Fullscreen (F)';
+      }
+    });
+
+    // Print Button
+    if (printBtn) {
+      printBtn.addEventListener('click', () => {
+        window.print();
+      });
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      // Don't intercept if user is typing in an input/textarea
+      if (['input', 'textarea'].includes(document.activeElement.tagName.toLowerCase())) return;
+
+      if (['ArrowRight', 'ArrowDown', 'PageDown'].includes(e.key) || e.key === ' ') {
+        e.preventDefault();
+        scrollToSlide(currentIndex + 1);
+      } else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) {
+        e.preventDefault();
+        scrollToSlide(currentIndex - 1);
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        scrollToSlide(0);
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        scrollToSlide(totalSlides - 1);
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleFullscreen();
+      }
+    });
+
+    // Initialize state
+    updateState(0);
+  })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SyncSpace — Project Report | Axlero Internship 2026</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #1e293b;
+      background: #f8fafc;
+      line-height: 1.65;
+      font-size: 14px;
+    }
+
+    /* Floating Print Action Bar */
+    .action-bar {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 1000;
+      display: flex;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 8px 16px;
+      border-radius: 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #4338ca; }
+
+    /* Page Container */
+    .document {
+      max-width: 850px;
+      margin: 40px auto 80px;
+      background: #fff;
+      padding: 60px 70px;
+      border-radius: 8px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Cover Header */
+    .header-badge {
+      display: inline-block;
+      background: #eef2ff;
+      color: #4f46e5;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #64748b;
+      margin-bottom: 24px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      padding: 16px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      margin-bottom: 36px;
+      font-size: 13px;
+    }
+
+    .meta-item strong { color: #0f172a; display: block; font-size: 11px; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+    .meta-item span { color: #0f172a; font-weight: 600; }
+
+    hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 32px 0;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #0f172a;
+      margin-top: 32px;
+      margin-bottom: 14px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1e293b;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+
+    p { margin-bottom: 12px; color: #334155; }
+
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 16px;
+      color: #334155;
+    }
+
+    li { margin-bottom: 6px; }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 13px;
+    }
+
+    th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-align: left;
+      padding: 10px 14px;
+      border: 1px solid #cbd5e1;
+    }
+
+    td {
+      padding: 9px 14px;
+      border: 1px solid #e2e8f0;
+      color: #334155;
+      vertical-align: top;
+    }
+
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #4f46e5;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #f8fafc;
+      padding: 16px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      margin: 16px 0;
+    }
+
+    .badge-done {
+      display: inline-block;
+      background: #dcfce7;
+      color: #15803d;
+      font-weight: 600;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 12px;
+    }
+
+    .status-card {
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #4f46e5;
+      background: #f8fafc;
+      padding: 14px 18px;
+      border-radius: 0 8px 8px 0;
+      margin: 12px 0;
+    }
+
+    .footer {
+      text-align: center;
+      color: #94a3b8;
+      font-size: 12px;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    /* Print styles */
+    @media print {
+      body { background: #fff; }
+      .action-bar { display: none !important; }
+      .document {
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        box-shadow: none;
+      }
+      h2 { page-break-after: avoid; }
+      pre, table, .status-card { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="action-bar">
+  <button class="btn" onclick="window.print()">🖨️ Save as PDF (Ctrl + P)</button>
+</div>
+
+<div class="document">
+
+  <div class="header-badge">Axlero Internship Program 2026</div>
+  <h1>SyncSpace — Project Report</h1>
+  <div class="subtitle">Real-time Collaborative Whiteboard & Multi-file Code Editor</div>
+
+  <div class="meta-grid">
+    <div class="meta-item"><strong>Project Duration</strong><span>September 2026</span></div>
+    <div class="meta-item"><strong>Submitted By</strong><span>SyncSpace Team</span></div>
+    <div class="meta-item"><strong>Team Lead</strong><span>Vishal</span></div>
+    <div class="meta-item"><strong>Status</strong><span class="badge-done">Completed</span></div>
+  </div>
+
+  <hr />
+
+  <h2>1. Executive Summary</h2>
+  <p>
+    SyncSpace is a real-time collaborative web application developed as part of the Axlero Internship Program. The platform empowers distributed development teams to brainstorm on an interactive whiteboard and edit multi-file code simultaneously in real time. The project is fully completed and in production, with the frontend deployed on Vercel and the backend on Render.
+  </p>
+
+  <h2>2. Project Overview</h2>
+  <table>
+    <tr><th>Property</th><th>Details</th></tr>
+    <tr><td><strong>Project Name</strong></td><td>SyncSpace</td></tr>
+    <tr><td><strong>Type</strong></td><td>Full-stack MERN Web Application</td></tr>
+    <tr><td><strong>Category</strong></td><td>Real-time Collaboration Tool</td></tr>
+    <tr><td><strong>Live Frontend</strong></td><td><a href="https://sync-space-axlero.vercel.app/" target="_blank">https://sync-space-axlero.vercel.app/</a></td></tr>
+    <tr><td><strong>Live Backend</strong></td><td><a href="https://syncspace-axlero.onrender.com" target="_blank">https://syncspace-axlero.onrender.com</a></td></tr>
+    <tr><td><strong>Repository</strong></td><td><a href="https://github.com/maurya0607/SyncSpace-Axlero" target="_blank">https://github.com/maurya0607/SyncSpace-Axlero</a></td></tr>
+    <tr><td><strong>Status</strong></td><td><span class="badge-done">Completed</span></td></tr>
+  </table>
+
+  <h2>3. Team</h2>
+  <table>
+    <thead><tr><th>Name</th><th>Role & Responsibilities</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Chandru</strong></td><td>Frontend and MERN Development</td></tr>
+      <tr><td><strong>Khushi</strong></td><td>Backend Development</td></tr>
+      <tr><td><strong>Akshaya</strong></td><td>Backend Development and MERN Stack Support</td></tr>
+      <tr><td><strong>Vishal</strong></td><td>Database, Testing, Documentation and Deployment — Team Lead</td></tr>
+    </tbody>
+  </table>
+
+  <h2>4. Objectives</h2>
+  <ol>
+    <li>Build a real-time collaborative code editor with multi-file support and active tab syncing.</li>
+    <li>Implement a shared whiteboard with canvas-based multi-user drawing synchronization.</li>
+    <li>Develop secure user authentication using JWT and bcrypt password hashing.</li>
+    <li>Enable room-based collaboration with invite validation.</li>
+    <li>Persist collaborative state (code and binary Yjs document state) to MongoDB Atlas.</li>
+    <li>Deploy the full-stack system to production (Vercel + Render).</li>
+    <li>Provide dedicated code execution capability within the workspace editor.</li>
+  </ol>
+
+  <h2>5. System Architecture</h2>
+  <pre>Client (Browser — React + Vite)
+      |
+      | HTTP REST (Auth & Rooms)   /   WebSocket (Socket.IO Real-time)
+      |
+Backend Server (Node.js + Express + Socket.IO)
+      |         |                      |
+  REST APIs   MongoDB Atlas        Yjs CRDT Engine
+  /api/auth   users                yjsManager
+  /api/rooms  rooms                in-memory docs & dirty queue
+  /api/execute codedocuments       5-second MongoDB persistence
+              whiteboards</pre>
+
+  <h2>6. Technology Stack</h2>
+  <table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Version</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="5"><strong>Frontend</strong></td><td>React</td><td>19.x</td><td>UI Component Architecture</td></tr>
+      <tr><td>Vite</td><td>8.x</td><td>Fast Build Tool & Bundler</td></tr>
+      <tr><td>Socket.IO Client</td><td>4.8.x</td><td>Real-time Bi-directional WebSocket Client</td></tr>
+      <tr><td>Yjs</td><td>13.6.x</td><td>CRDT Algorithm for Conflict-Free Text Editing</td></tr>
+      <tr><td>PrismJS</td><td>1.30.x</td><td>Syntax Highlighting for Code Editor</td></tr>
+      <tr><td rowspan="5"><strong>Backend</strong></td><td>Node.js & Express</td><td>18.x / 5.x</td><td>Runtime Environment & REST API Server</td></tr>
+      <tr><td>Socket.IO</td><td>4.8.x</td><td>WebSocket Server with JWT Handshake Auth</td></tr>
+      <tr><td>MongoDB Atlas & Mongoose</td><td>9.x</td><td>Cloud Database & Schema Modeling</td></tr>
+      <tr><td>JWT & bcryptjs</td><td>9.x / 3.x</td><td>Secure Authentication & Hashing</td></tr>
+      <tr><td>Yjs</td><td>13.6.x</td><td>Server-side Collaborative Document Management</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. Features Implemented</h2>
+  <div class="status-card">
+    <h3>1. User Authentication</h3>
+    <p>Secure registration and login with bcrypt password hashing and JWT token issuance. Supports 'Remember Me' (localStorage vs sessionStorage) and route protection.</p>
+  </div>
+  <div class="status-card">
+    <h3>2. Room Management</h3>
+    <p>Creation of rooms with unique IDs, user invitation mechanism, and live membership verification for every connection attempt.</p>
+  </div>
+  <div class="status-card">
+    <h3>3. Collaborative Code Editor</h3>
+    <p>Multi-file support (create, switch, delete files), real-time synchronized editing powered by Yjs CRDTs, and active file tab synchronization.</p>
+  </div>
+  <div class="status-card">
+    <h3>4. Shared Whiteboard</h3>
+    <p>Interactive HTML5 canvas whiteboard supporting simultaneous drawing, stroke synchronization, and shape coordination via Socket.IO events.</p>
+  </div>
+  <div class="status-card">
+    <h3>5. Code Execution Engine</h3>
+    <p>Integrated <code>/api/execute</code> endpoint allowing developers to run code snippets directly from the editor interface.</p>
+  </div>
+  <div class="status-card">
+    <h3>6. Real-time Presence & Cursor Awareness</h3>
+    <p>Live active user roster and remote cursor broadcasting via awareness update events.</p>
+  </div>
+  <div class="status-card">
+    <h3>7. Reliable MongoDB Persistence</h3>
+    <p>5-second debounced background timer that flushes in-memory Yjs binary state buffers and code content to MongoDB Atlas.</p>
+  </div>
+
+  <h2>8. Database Collections</h2>
+  <table>
+    <thead><tr><th>Collection</th><th>Key Fields</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>users</code></td><td>_id, username, password, createdAt</td><td>Stores user credentials with bcrypt hashes.</td></tr>
+      <tr><td><code>rooms</code></td><td>_id, roomId, activeUsers, invitedUsers</td><td>Room metadata and invited participants.</td></tr>
+      <tr><td><code>codedocuments</code></td><td>roomId, fileName, content, language, yjsState</td><td>Compound unique index on { roomId, fileName }. Stores binary Yjs state.</td></tr>
+      <tr><td><code>whiteboards</code></td><td>roomId, drawingData, updatedAt</td><td>Serialized vector coordinates of whiteboard drawings.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>9. Deployment Overview</h2>
+  <table>
+    <thead><tr><th>Component</th><th>Platform</th><th>Live URL</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Frontend</strong></td><td>Vercel</td><td><a href="https://sync-space-axlero.vercel.app/" target="_blank">https://sync-space-axlero.vercel.app/</a></td></tr>
+      <tr><td><strong>Backend</strong></td><td>Render</td><td><a href="https://syncspace-axlero.onrender.com" target="_blank">https://syncspace-axlero.onrender.com</a></td></tr>
+      <tr><td><strong>Database</strong></td><td>MongoDB Atlas</td><td>Cloud Cluster (AWS)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>10. Conclusion</h2>
+  <p>
+    SyncSpace has been successfully designed, engineered, tested, and deployed to production as part of the Axlero Internship Program. The team gained comprehensive full-stack experience encompassing real-time socket communication, CRDT distributed algorithms, secure authentication patterns, MongoDB schema architecture, and modern cloud deployment pipelines.
+  </p>
+
+  <div class="footer">
+    <p>SyncSpace — Final Project Report | Axlero Internship Program 2026</p>
+    <p>Team: Chandru, Khushi, Akshaya, Vishal (Team Lead)</p>
+  </div>
+
+</div>
+
+</body>
+</html>
